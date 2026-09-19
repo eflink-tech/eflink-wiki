@@ -1,0 +1,117 @@
+server:
+  # 本机 8080 常被开发用 nginx 占用，服务默认 8090
+  port: 8090
+
+spring:
+  application:
+    name: eflink-wiki-server
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/eflink-wiki?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    # 本地开发默认 root/123456，请按需通过环境变量 SPRING_DATASOURCE_USERNAME / SPRING_DATASOURCE_PASSWORD 覆盖
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-init-sql: SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # 允许收编已存在但无迁移历史的库（首次部署若手工建过表则自动 baseline；正常全新部署不受影响）
+    baseline-on-migrate: true
+  threads:
+    virtual:
+      enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /springdoc/docs.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+wiki:
+  jwt:
+    # 生产部署务必通过环境变量 WIKI_JWT_SECRET 覆盖（长度 >= 32 字节）
+    secret: ${WIKI_JWT_SECRET:dev-only-jwt-secret-key-please-change-in-production-0123456789}
+    access-ttl-seconds: 7200        # access token 2 小时
+    refresh-ttl-seconds: 2592000    # refresh token 30 天
+  captcha-enabled: false            # 图形验证码开关（登录页据此展示）
+  license:
+    # Ed25519 验签公钥（厂商随授权交付；由 licenseKeygen 工具生成）
+    public-key: MCowBQYDK2VwAyEAmN4OOcXXW5RlSrkek09u+N5au7rw5ppNsmjrkhsF4IQ=
+  auth:
+    mode: local                     # local 本地账号 / ldap 企业目录
+    ldap:
+      host: 127.0.0.1
+      port: 389
+      use-ssl: false
+      base-dn: dc=example,dc=com
+      bind-dn-template: uid={0},ou=people,{baseDn}
+      display-name-attr: cn
+      email-attr: mail
+      external-id-attr: entryUUID
+  search:
+    engine: mysql                   # mysql（ngram，默认）/ meilisearch
+    meili:
+      host: http://127.0.0.1:7700
+      index: wiki
+      api-key: ""
+  storage:
+    type: qiniu                     # local 本地磁盘 / qiniu 七牛云对象存储
+    local-dir: ./data/uploads       # type=local 时的本地目录（绝对路径建议生产环境覆盖）
+    qiniu:
+      # AK/SK 与 eflink-backend 共用同一套凭据与桶；生产值经 deploy.env 环境变量注入，勿提交到代码库
+      access-key: ${QINIU_ACCESS_KEY:}
+      secret-key: ${QINIU_SECRET_KEY:}
+      bucket: ${QINIU_BUCKET:eflink}                  # 存储空间名称
+      domain: ${QINIU_DOMAIN:https://oss.eflink.tech} # CDN 加速域名（http/https 开头）
+      zone: ${QINIU_ZONE:huanan}                      # 区域：huadong/huabei/huanan/beimei/xinjiapo
+      private-bucket: ${QINIU_PRIVATE_BUCKET:true}    # 私有桶：返回服务端签名的访问 URL
+      private-url-deadline-seconds: ${QINIU_PRIVATE_URL_DEADLINE:315360000} # 签名有效期（秒），默认 10 年：URL 嵌入正文长期使用
+      key-prefix: ${QINIU_WIKI_KEY_PREFIX:wiki/}      # 独立子目录：本系统所有对象落在 wiki/ 下
+  branding:
+    product-name: 易飞知识库
+    logo-url: ""
+    footer: ""
+  collab:
+    # collab-server（实时协同 Node 服务）访问内部接口的共享密钥，两端须一致
+    internal-key: ${WIKI_INTERNAL_KEY:dev-only-collab-internal-key-0123456789}
+  notify:
+    # IM 推送消息里拼接的页面链接前缀（前端可达地址，如 https://wiki.example.com）；空则不带链接
+    base-url: ${WIKI_BASE_URL:}
+    dingtalk:
+      # 钉钉自定义机器人 webhook；配置后评论/@提及 自动推送，空则关闭
+      webhook: ${DINGTALK_WEBHOOK:}
+      # 钉钉机器人加签密钥（安全设置选「加签」时填写）
+      secret: ${DINGTALK_SECRET:}
+    feishu:
+      # 飞书自定义机器人 webhook；配置后自动推送，空则关闭
+      webhook: ${FEISHU_WEBHOOK:}
+    wecom:
+      # 企业微信群机器人 webhook（https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx）；配置后自动推送，空则关闭
+      webhook: ${WECOM_WEBHOOK:}
+  cors:
+    # 前后端分域部署时填写前端 Origin，例如 http://wiki.example.com；空 = 不启用 CORS（推荐 nginx 同域反代）
+    origins: []
+  router:
+    whitelist:
+      - /api/public/config
+      - /api/setup/status
+      - /api/setup
+      - /api/auth/captcha
+      - /api/auth/login
+      - /api/auth/refresh
+      - /api/auth/logout
+      - /api/internal/collab/auth
+      - /api/internal/collab/doc
+
+logging:
+  level:
+    tech.eflink.wiki: info

@@ -1,0 +1,98 @@
+plugins {
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.jetbrains.kotlin.plugin.spring'
+}
+
+group = 'tech.eflink'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+}
+
+dependencies {
+    implementation project(':wiki-core')
+    implementation project(':wiki-contract')
+    implementation project(':wiki-store')
+
+    // Spring Boot
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-jooq'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // 数据库迁移（schema 唯一来源：wiki-store 的 db/migration）
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-mysql'
+
+    // Jackson Kotlin
+    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
+
+    // Swagger/OpenAPI
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+
+    // JWT（无状态会话）+ BCrypt 密码
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+    implementation 'org.springframework.security:spring-security-crypto'
+
+    // 进程内缓存（验证码等）+ 图形验证码
+    implementation 'com.github.ben-manes.caffeine:caffeine'
+    implementation 'cn.hutool:hutool-all:5.8.24'
+    // Excel 批量导入用户（hutool ExcelUtil 依赖 POI）
+    implementation 'org.apache.poi:poi-ooxml:5.2.5'
+
+    // LDAP/AD 企业目录对接
+    implementation 'com.unboundid:unboundid-ldapsdk:6.0.11'
+
+    // 七牛云对象存储（文件上传）
+    implementation 'com.qiniu:qiniu-java-sdk:7.15.1'
+
+    // MySQL
+    runtimeOnly 'com.mysql:mysql-connector-j'
+
+    // Kotlin
+    implementation 'org.jetbrains.kotlin:kotlin-reflect'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+        jvmTarget = '21'
+        freeCompilerArgs = ['-Xjsr305=strict']
+    }
+}
+
+tasks.withType(Test) {
+    useJUnitPlatform()
+}
+
+springBoot {
+    mainClass = 'tech.eflink.wiki.app.ApplicationRunKt'
+}
+
+// 默认 API-only 包。独立部署前端时不要把 static 打进 jar。
+// 需要单 jar 内嵌前端时：先拷贝 dist 到 resources/static，再 -PembedFrontend=true
+tasks.named('bootJar', org.springframework.boot.gradle.tasks.bundling.BootJar) {
+    if (findProperty('embedFrontend') != 'true') {
+        exclude 'static/**'
+    }
+}
+
+// License 密钥与授权文件生成工具（厂商侧）
+task licenseKeygen(type: JavaExec) {
+    group = 'eflink'
+    description = '生成 Ed25519 密钥对与授权文件（-Pout= -Plicensee= -Pdays= -PmaxUsers=）'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'tech.eflink.wiki.app.tools.LicenseKeygenKt'
+    def out = project.findProperty('out') ?: 'deploy/keys'
+    def licensee = project.findProperty('licensee') ?: '开发环境'
+    def days = project.findProperty('days') ?: '365'
+    def maxUsers = project.findProperty('maxUsers') ?: ''
+    jvmArgs "-Dout=$out", "-Dlicensee=$licensee", "-Ddays=$days", "-DmaxUsers=$maxUsers"
+}

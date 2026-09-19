@@ -1,0 +1,29 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+}
+
+group = 'tech.eflink'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+}
+
+dependencies {
+    // 命令对象注册依赖 Spring 事件与容器（ApplicationContextProvider / @EventListener）
+    implementation 'org.springframework:spring-context'
+    // MdcContext 读取客户端 IP 需要 Servlet API
+    compileOnly 'jakarta.servlet:jakarta.servlet-api'
+    // 日志上下文
+    implementation 'org.slf4j:slf4j-api'
+
+    implementation 'org.jetbrains.kotlin:kotlin-reflect'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib'
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+        jvmTarget = '21'
+        freeCompilerArgs = ['-Xjsr305=strict']
+    }
+}

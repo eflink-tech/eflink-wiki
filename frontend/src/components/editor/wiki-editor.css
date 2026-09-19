@@ -1,0 +1,585 @@
+/* 知识库 Tiptap 编辑器内容排版。
+   Tailwind 管不到 ProseMirror 动态生成的子元素，这里用普通 CSS 深度选择器承接。 */
+
+.wiki-editor {
+  color: var(--color-ink-1);
+}
+
+/* 阅读正文尺度：16px / 1.8（方案 §一 字体尺度） */
+.wiki-editor .ProseMirror {
+  outline: none;
+  min-height: 220px;
+  font-size: 16px;
+  line-height: 1.8;
+  word-break: break-word;
+}
+
+/* ── 标题 / 段落 / 列表 ──（内容标题 26 / 21 / 18px semibold） */
+
+.wiki-editor .ProseMirror h1 {
+  margin: 1.6em 0 0.6em;
+  font-size: 1.625em;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.wiki-editor .ProseMirror h2 {
+  margin: 1.5em 0 0.5em;
+  font-size: 1.3125em;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.wiki-editor .ProseMirror h3 {
+  margin: 1.3em 0 0.4em;
+  font-size: 1.125em;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.wiki-editor .ProseMirror h4 {
+  margin: 1.2em 0 0.4em;
+  font-size: 1.05em;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.wiki-editor .ProseMirror h5 {
+  margin: 1.1em 0 0.35em;
+  font-size: 1em;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.wiki-editor .ProseMirror p {
+  margin: 0.55em 0;
+}
+
+.wiki-editor .ProseMirror ul,
+.wiki-editor .ProseMirror ol {
+  margin: 0.45em 0;
+  padding-left: 1.5em;
+}
+
+.wiki-editor .ProseMirror ul {
+  list-style: disc;
+}
+
+.wiki-editor .ProseMirror ol {
+  list-style: decimal;
+}
+
+.wiki-editor .ProseMirror li p {
+  margin: 0.15em 0;
+}
+
+/* 引用块：brand-light 底 + 左侧 3px 主色条（方案对比稿样式） */
+.wiki-editor .ProseMirror blockquote {
+  margin: 0.875em 0;
+  padding: 0.625em 1em;
+  border-left: 3px solid var(--color-brand);
+  border-radius: 0 var(--radius-ctrl) var(--radius-ctrl) 0;
+  background: var(--color-brand-light);
+  color: var(--color-ink-2);
+}
+
+/* ── 代码块（CodeBlockLowlight + React NodeView，浅色 github 风格） ── */
+
+.wiki-editor .ProseMirror code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.wiki-editor .wiki-codeblock {
+  position: relative;
+  margin: 0.8em 0;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  background: var(--color-sunken);
+}
+
+/* 代码块工具条：语言下拉 / 语言标签 / JSON 格式化按钮 */
+.wiki-editor .wiki-codeblock__bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.wiki-editor .wiki-codeblock__lang {
+  font-size: 12px;
+  color: var(--color-ink-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  padding: 1px 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+.wiki-editor .wiki-codeblock__lang-label {
+  font-size: 12px;
+  color: var(--color-ink-3);
+  user-select: none;
+}
+
+.wiki-editor .wiki-codeblock__fmt {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--color-brand);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.wiki-editor .wiki-codeblock__fmt:hover {
+  background: var(--color-brand-light);
+}
+
+/* 代码本体：背景交给外层卡片，突出 hljs 配色 */
+.wiki-editor .wiki-codeblock pre {
+  margin: 0;
+  padding: 0.85em 1em;
+  border-radius: 0 0 8px 8px;
+  background: transparent;
+  color: #24292e;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+.wiki-editor .wiki-codeblock pre code {
+  display: block;
+  background: transparent;
+  padding: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 代码块 CODE 徽标：与其他块级徽标同款，仅编辑态显示 */
+.wiki-editor .wiki-codeblock__badge {
+  display: none;
+  position: absolute;
+  left: -44px;
+  top: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--color-ink-3);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+.wiki-editor--edit .wiki-codeblock__badge {
+  display: block;
+}
+
+/* 行内代码：sunken 底、等宽字体、14px（方案对比稿样式） */
+.wiki-editor .ProseMirror :not(pre) > code {
+  padding: 0.1em 0.375em;
+  border-radius: 4px;
+  background: var(--color-sunken);
+  color: var(--color-ink-1);
+  font-size: 0.875em;
+}
+
+.wiki-editor .ProseMirror hr {
+  margin: 1.4em 0;
+  border: none;
+  border-top: 1px solid var(--color-line);
+}
+
+.wiki-editor .ProseMirror a {
+  color: var(--color-brand);
+  text-decoration: underline;
+}
+
+/* ── 图片 ── */
+
+.wiki-editor .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.4em 0;
+}
+
+.wiki-editor .ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* ── 任务列表 ── */
+
+.wiki-editor .ProseMirror ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0.25em;
+}
+
+.wiki-editor .ProseMirror ul[data-type='taskList'] li {
+  display: flex;
+  gap: 0.5em;
+  align-items: flex-start;
+}
+
+.wiki-editor .ProseMirror ul[data-type='taskList'] li > label {
+  flex: 0 0 auto;
+  margin-top: 0.35em;
+  user-select: none;
+}
+
+.wiki-editor .ProseMirror ul[data-type='taskList'] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.wiki-editor .ProseMirror ul[data-type='taskList'] input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-brand);
+  cursor: pointer;
+}
+
+.wiki-editor .ProseMirror ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: var(--color-ink-3);
+  text-decoration: line-through;
+}
+
+/* ── 表格 ── */
+
+.wiki-editor .ProseMirror table {
+  margin: 0.8em 0;
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  overflow: hidden;
+}
+
+.wiki-editor .ProseMirror th,
+.wiki-editor .ProseMirror td {
+  border: 1px solid var(--color-line);
+  padding: 6px 10px;
+  vertical-align: top;
+  position: relative;
+  min-width: 2em;
+}
+
+.wiki-editor .ProseMirror th {
+  background: var(--color-brand-light);
+  font-weight: 600;
+  text-align: left;
+}
+
+.wiki-editor .ProseMirror .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(51, 112, 255, 0.12);
+  pointer-events: none;
+}
+
+.wiki-editor .ProseMirror .column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: -2px;
+  width: 4px;
+  background: rgba(51, 112, 255, 0.45);
+  pointer-events: none;
+}
+
+.wiki-editor.resize-cursor,
+.wiki-editor .ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
+/* 表格外层容器：列宽调整时防止页面横向抖动 */
+.wiki-editor .tableWrapper {
+  overflow-x: auto;
+}
+
+/* ── Placeholder ── */
+
+/* 光标所在的顶层空段落显示提示（is-empty 由 tiptap Placeholder 在 showOnlyCurrent 下
+   仅附加到光标所在的空节点）。限定 `.ProseMirror > p` 顶层直接子级，表格单元格 /
+   列表项 / 分栏内的空段落不显示，避免噪音；整篇文档为空的首段落同样命中 */
+.wiki-editor .ProseMirror > p.is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-ink-3);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* ── 选中嵌入块卡片 ── */
+
+.wiki-editor .ProseMirror .ProseMirror-selectednode .wiki-embed-card > div {
+  border-color: rgba(51, 112, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(51, 112, 255, 0.12);
+}
+
+/* ── gapcursor（StarterKit 内置，块级空隙点击定位） ── */
+
+.wiki-editor .ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+}
+
+.wiki-editor .ProseMirror-gapcursor:after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: -2px;
+  width: 20px;
+  border-top: 1px solid #2563eb;
+  animation: wiki-gapcursor-blink 1.1s steps(2, start) infinite;
+}
+
+.wiki-editor .ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}
+
+@keyframes wiki-gapcursor-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* ── 块级格式徽标（仅编辑态）：节点装饰 class + data-badge，徽标由 ::before 绘制 ── */
+
+.wiki-editor--edit .ProseMirror .wiki-has-badge {
+  position: relative;
+}
+
+.wiki-editor--edit .ProseMirror .wiki-has-badge::before {
+  content: attr(data-badge);
+  position: absolute;
+  left: -38px;
+  top: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--color-ink-3);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 表格徽标容器：块前零高度块级元素（.tableWrapper 有 overflow 裁剪，不能用节点装饰） */
+.wiki-editor--edit .ProseMirror .wiki-block-badge-anchor {
+  display: block;
+  height: 0;
+  position: relative;
+  pointer-events: none;
+  user-select: none;
+}
+
+.wiki-editor--edit .ProseMirror .wiki-block-badge-anchor::before {
+  content: attr(data-badge);
+  position: absolute;
+  left: -38px;
+  top: 0.7em;
+  transform: translateY(-50%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--color-ink-3);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── 嵌入块内联只读预览（draw / mindmap）：隐藏包内编辑器 chrome，仅保留画布 ── */
+
+/* 整体禁交互：只读（Konva Stage 的指针事件随 pointer-events:none 一并失效） */
+.wiki-embed-preview__host {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* draw：AppLayout 根节点 h-screen/w-screen → 填满预览容器 */
+.wiki-preview-draw .h-screen {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* draw：隐藏顶栏/底栏/右键菜单（保留 AppLayout 根的第 2 个子节点=中间三栏区） */
+.wiki-preview-draw .h-screen > *:not(:nth-child(2)) {
+  display: none !important;
+}
+
+/* draw：隐藏左/右属性面板、AI 面板与右侧竖排工具栏（均为 aside） */
+.wiki-preview-draw aside {
+  display: none !important;
+}
+
+/* draw：画布区背景改白色，与预览卡片协调 */
+.wiki-preview-draw main {
+  background: #ffffff !important;
+}
+
+/* mindmap：隐藏顶部工具栏（主布局首个子块）与底部状态栏（最后一个子块） */
+.wiki-preview-mindmap > div > div:first-child,
+.wiki-preview-mindmap > div > div:last-child {
+  display: none !important;
+}
+
+/* pptx：AppLayout 子块顺序为 顶栏 / 中栏 / 底栏 / 弹窗宿主…，隐藏顶栏与底栏 */
+.wiki-preview-pptx > div > div:first-child,
+.wiki-preview-pptx > div > div:nth-child(3) {
+  display: none !important;
+}
+
+/* pptx：缩略图面板与样式/动画/批注面板（包内自带 data-testid，按序无关地隐藏） */
+.wiki-preview-pptx [data-testid='thumbnail-panel'],
+.wiki-preview-pptx [data-testid='style-panel'] {
+  display: none !important;
+}
+
+/* excel：SheetEditor 子块顺序为 画布区 / 底部状态栏（弹窗宿主关闭态渲染 null），
+   工具栏与公式栏已经组件 props 关闭，这里补隐藏始终渲染的底栏 */
+.wiki-preview-excel > div > div:last-child {
+  display: none !important;
+}
+
+/* 徽标垂直居中：首行字号随级别不同，分别对准首行文字中心（徽标高 11px，top = 中心 - 5.5） */
+.wiki-editor--edit .ProseMirror h1.wiki-has-badge::before { top: 10.5px; }
+.wiki-editor--edit .ProseMirror h2.wiki-has-badge::before { top: 8px; }
+.wiki-editor--edit .ProseMirror h3.wiki-has-badge::before { top: 6px; }
+.wiki-editor--edit .ProseMirror h4.wiki-has-badge::before { top: 5px; }
+.wiki-editor--edit .ProseMirror h5.wiki-has-badge::before { top: 4.5px; }
+
+/* ── 分栏（columns / column 自研扩展） ── */
+
+.wiki-editor .ProseMirror .wiki-columns-wrap {
+  position: relative;
+  margin: 0.8em 0;
+}
+
+/* 栏容器：grid 模板列由 NodeViewContent 内联样式给出。
+   @tiptap/react 会在 contentDOM 内再包一层 data-node-view-content-react，
+   用 display:contents 让该层不占格，栏节点才能成为 grid item 并排显示。
+   栏节点在包裹层内，必须用后代选择器（不能用 >）才能套上灰底卡片。 */
+.wiki-editor .ProseMirror .wiki-columns {
+  display: grid;
+  width: 100%;
+  gap: 0 16px;
+  margin: 0;
+}
+
+.wiki-editor .ProseMirror .wiki-columns [data-node-view-content-react] {
+  display: contents;
+}
+
+/* 单栏：浅灰圆角卡片（对齐语雀分栏视觉） */
+.wiki-editor .ProseMirror .wiki-columns [data-column] {
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 14px;
+  background: #f4f5f7;
+  border-radius: 8px;
+}
+
+/* 空栏占位提示（showOnlyCurrent 下 is-empty 仅加在光标所在空段落） */
+.wiki-editor .ProseMirror .wiki-columns p.is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-ink-3);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* 栏内悬浮工具条：悬浮或选中分栏时浮出，不占文档流 */
+.wiki-editor .ProseMirror .wiki-columns__bar {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: -30px;
+  z-index: 40;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 2px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.wiki-editor .ProseMirror .wiki-columns-wrap:hover .wiki-columns__bar,
+.wiki-editor .ProseMirror .wiki-columns-wrap.ProseMirror-selectednode .wiki-columns__bar,
+.wiki-editor .ProseMirror .ProseMirror-selectednode .wiki-columns__bar {
+  display: flex;
+}
+
+.wiki-editor .ProseMirror .wiki-columns__bar-btn {
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #475569;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.wiki-editor .ProseMirror .wiki-columns__bar-btn:hover {
+  background: #f1f5f9;
+}
+
+.wiki-editor .ProseMirror .wiki-columns__bar-btn.is-active {
+  background: var(--color-brand-light);
+  color: #2563eb;
+}
+
+.wiki-editor .ProseMirror .wiki-columns__bar-btn.is-danger:hover {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.wiki-editor .ProseMirror .wiki-columns__bar-sep {
+  width: 1px;
+  height: 14px;
+  margin: 0 2px;
+  background: #e2e8f0;
+}
+
+/* ── 媒体块（附件/视频/音频/网页内嵌/子页面引用）选中态 ── */
+
+.wiki-editor .ProseMirror .ProseMirror-selectednode > .wiki-attachment > a,
+.wiki-editor .ProseMirror .ProseMirror-selectednode > .wiki-video > div,
+.wiki-editor .ProseMirror .ProseMirror-selectednode > .wiki-audio > div,
+.wiki-editor .ProseMirror .ProseMirror-selectednode > .wiki-web-embed > div,
+.wiki-editor .ProseMirror .ProseMirror-selectednode > .wiki-page-ref > div {
+  border-color: rgba(51, 112, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(51, 112, 255, 0.12);
+}
+
+/* 分栏内不显示左侧 H1~H5 徽标（会压到栏分隔线） */
+.wiki-editor--edit .ProseMirror .wiki-columns .wiki-has-badge::before {
+  display: none;
+}
+
+/* ── 全屏编辑器（EmbedEditor，所有类型）：修包内 h-screen 溢出，使底栏/状态栏可见 ── */
+.wiki-fullscreen-editor .h-screen {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* ===== @提及（mention）=====
+ * mention 渲染为品牌色 chip；提示弹层样式在 MentionExtension.tsx 内联 tailwind 类 */
+.ProseMirror .wiki-mention,
+.wiki-mention {
+  color: var(--color-brand);
+  background: color-mix(in srgb, var(--color-brand) 10%, transparent);
+  border-radius: 4px;
+  padding: 0 3px;
+  font-weight: 500;
+}

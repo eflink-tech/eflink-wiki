@@ -1,0 +1,85 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.jetbrains.kotlin.plugin.spring'
+    id 'nu.studer.jooq'
+}
+
+group = 'tech.eflink'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+}
+
+ext {
+    jooqVersion = '3.19.10'
+}
+
+dependencies {
+    implementation project(':wiki-core')
+    implementation 'org.springframework.boot:spring-boot-starter-jooq'
+
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    jooqGenerator 'com.mysql:mysql-connector-j'
+
+    implementation 'org.jetbrains.kotlin:kotlin-reflect'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib'
+}
+
+// jOOQ 生成代码提交入库；以任务方式挂到 sourceSets，Gradle 8 会自动建立编译依赖
+// （jOOQ 任务在 afterEvaluate 阶段创建，故挂载也需在其后）
+afterEvaluate {
+    sourceSets {
+        main {
+            kotlin.srcDir(tasks.named('generateJooq'))
+            java.srcDir(tasks.named('generateJooq'))
+        }
+    }
+}
+
+jooq {
+    version = jooqVersion
+    configurations {
+        main {
+            generationTool {
+                jdbc {
+                    driver = 'com.mysql.cj.jdbc.Driver'
+                    url = 'jdbc:mysql://127.0.0.1:3306/eflink-wiki?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai'
+                    user = System.getenv('SPRING_DATASOURCE_USERNAME') ?: 'root'
+                    // 代码生成连接本地库；密码经环境变量注入，勿提交真实密码
+                    password = System.getenv('SPRING_DATASOURCE_PASSWORD') ?: '123456'
+                }
+                generator {
+                    name = 'org.jooq.codegen.DefaultGenerator'
+                    database {
+                        name = 'org.jooq.meta.mysql.MySQLDatabase'
+                        inputSchema = 'eflink-wiki'
+                        // TINYINT 一律按 Integer 处理，避免 Byte 属性
+                        forcedTypes {
+                            forcedType {
+                                name = 'INTEGER'
+                                includeExpression = '.*'
+                                includeTypes = 'TINYINT'
+                            }
+                        }
+                    }
+                    target {
+                        packageName = 'tech.eflink.wiki.database'
+                        directory = 'src/main/generated'
+                    }
+                    generate {
+                        daos = false
+                        pojos = true
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+        jvmTarget = '21'
+        freeCompilerArgs = ['-Xjsr305=strict']
+    }
+}

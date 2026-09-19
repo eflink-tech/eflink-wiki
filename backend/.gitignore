@@ -1,0 +1,11 @@
+.gradle/
+build/
+out/
+dist-release/
+.idea/
+*.iml
+.DS_Store
+data/uploads/
+
+# 前端构建产物（--embedded 出包时由 scripts/build-all.sh 拷入，不入库）
+wiki-app/src/main/resources/static/

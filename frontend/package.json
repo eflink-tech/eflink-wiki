@@ -1,0 +1,116 @@
+{
+  "name": "eflink-wiki-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@10.34.5",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@eflink-tech/draw": "file:../../eflink-draw/packages/draw",
+    "@eflink-tech/excel": "file:../../eflink-excel/packages/excel",
+    "@eflink-tech/mindmap": "file:../../eflink-mindmap/packages/mindmap",
+    "@eflink-tech/pptx": "file:../../eflink-pptx/packages/pptx",
+    "@eflink-tech/word": "file:../../eflink-word/packages/word",
+    "@floating-ui/dom": "^1.8.0",
+    "@hocuspocus/provider": "^2.15.3",
+    "@tiptap/core": "^2.27.3",
+    "@tiptap/extension-bubble-menu": "2.27.3",
+    "@tiptap/extension-code-block": "2.27.3",
+    "@tiptap/extension-code-block-lowlight": "^2.27.3",
+    "@tiptap/extension-collaboration": "2.27.3",
+    "@tiptap/extension-collaboration-cursor": "2.27.3",
+    "@tiptap/extension-color": "2.27.3",
+    "@tiptap/extension-highlight": "2.27.3",
+    "@tiptap/extension-image": "^2.27.3",
+    "@tiptap/extension-link": "2.27.3",
+    "@tiptap/extension-mention": "^2.27.3",
+    "@tiptap/extension-placeholder": "^2.27.3",
+    "@tiptap/extension-table": "^2.27.3",
+    "@tiptap/extension-table-cell": "^2.27.3",
+    "@tiptap/extension-table-header": "^2.27.3",
+    "@tiptap/extension-table-row": "^2.27.3",
+    "@tiptap/extension-task-item": "^2.27.3",
+    "@tiptap/extension-task-list": "^2.27.3",
+    "@tiptap/extension-text-align": "2.27.3",
+    "@tiptap/extension-text-style": "2.27.3",
+    "@tiptap/extension-underline": "2.27.3",
+    "@tiptap/pm": "^2.27.3",
+    "@tiptap/react": "^2.27.3",
+    "@tiptap/starter-kit": "^2.27.3",
+    "@tiptap/suggestion": "^2.27.3",
+    "axios": "^1.19.0",
+    "diff-match-patch": "^1.0.5",
+    "docx-preview": "^0.4.0",
+    "highlight.js": "^11.12.0",
+    "html2canvas-pro": "^2.4.3",
+    "jspdf": "4.2.1",
+    "lib0": "^0.2.117",
+    "lowlight": "^3.3.0",
+    "lucide-react": "^1.34.0",
+    "pptx-preview": "^1.0.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.2",
+    "rxjs": "^7.8.1",
+    "xlsx": "^0.18.5",
+    "y-prosemirror": "^1.3.7",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.32",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "happy-dom": "^20.14.5",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@eflink-tech/excel",
+      "esbuild"
+    ],
+    "packageExtensions": {
+      "@tiptap/extension-bullet-list@3.31.3": {
+        "dependencies": {
+          "@tiptap/extension-list": "3.31.3"
+        }
+      },
+      "@tiptap/extension-ordered-list@3.31.3": {
+        "dependencies": {
+          "@tiptap/extension-list": "3.31.3"
+        }
+      },
+      "@tiptap/extension-list-item@3.31.3": {
+        "dependencies": {
+          "@tiptap/extension-list": "3.31.3"
+        }
+      },
+      "@tiptap/extension-dropcursor@3.31.3": {
+        "dependencies": {
+          "@tiptap/extensions": "3.31.3"
+        }
+      },
+      "@tiptap/extension-gapcursor@3.31.3": {
+        "dependencies": {
+          "@tiptap/extensions": "3.31.3"
+        }
+      },
+      "@tiptap/extension-history@3.31.3": {
+        "dependencies": {
+          "@tiptap/extensions": "3.31.3"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+}
+
+group = 'tech.eflink'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+}
+
+dependencies {
+    api project(':wiki-core')
+
+    // Swagger 注解（@Tag / @Operation / @Parameter）
+    implementation 'org.springdoc:springdoc-openapi-starter-common:2.2.0'
+    // 上传命令参数需要 MultipartFile
+    implementation 'org.springframework:spring-web'
+
+    implementation 'org.jetbrains.kotlin:kotlin-reflect'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib'
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+        jvmTarget = '21'
+        freeCompilerArgs = ['-Xjsr305=strict']
+    }
+}

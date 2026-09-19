@@ -1,0 +1,29 @@
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 依赖与构建产物
+node_modules/
+dist/
+build/
+out/
+.gradle/
+dist-release/
+
+# 运行数据
+data/
+**/data/
+
+# 密钥与敏感文件（License 私钥等）
+backend/deploy/keys/
+
+# 日志与临时文件
+*.log
+tmp/
+
+# 部署配置（含服务器地址与密钥，切勿提交）
+scripts/deploy.env
+
+# 内部开发过程产物（不随开源分发）
+.superpowers/
+docs/ui-review/

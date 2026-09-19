@@ -1,0 +1,22 @@
+{
+  "name": "eflink-wiki-collab-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "eflink-wiki 实时协同服务（Hocuspocus + Yjs）：多人同页编辑的 WebSocket 服务端",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@hocuspocus/server": "^2.15.0",
+    "@hocuspocus/extension-throttle": "^2.15.0",
+    "yjs": "^13.6.0",
+    "y-prosemirror": "^1.2.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}

@@ -1,0 +1,73 @@
+# 知识库前后端独立部署示例（推荐同域反代，避免 CORS）
+# 用法：把 frontend/dist-release 放到 /var/www/eflink-wiki/
+#   后端 jar      监听 127.0.0.1:8090
+#   collab-server 监听 127.0.0.1:18080（实时协同 WebSocket；未部署协同服务可删掉 /collab 段）
+
+server {
+    listen 80;
+    server_name wiki.example.com;
+    root /var/www/eflink-wiki;
+    index index.html;
+
+    # 实时协同 WebSocket（Hocuspocus）：必须走 Upgrade 协议头
+    location /collab {
+        proxy_pass http://127.0.0.1:18080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    # 入口与版本文件禁止缓存，否则用户拿不到新 index / 新 version.json
+    location = /index.html {
+        add_header Cache-Control "no-cache, must-revalidate";
+        try_files $uri =404;
+    }
+
+    location = /version.json {
+        add_header Cache-Control "no-cache, must-revalidate";
+        try_files $uri =404;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 50m;
+    }
+
+    location /open/ {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /springdoc/ {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_set_header Host $host;
+    }
+
+    location /assets/ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
