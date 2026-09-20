@@ -14,6 +14,13 @@ import tech.eflink.wiki.contract.auth.AuthResult
 import tech.eflink.wiki.contract.auth.CaptchaResult
 import tech.eflink.wiki.contract.auth.ChangePasswordCommand
 import tech.eflink.wiki.contract.auth.ChangePasswordRequest
+import tech.eflink.wiki.contract.auth.ConnectorBindCommand
+import tech.eflink.wiki.contract.auth.ConnectorBindRequest
+import tech.eflink.wiki.contract.auth.ConnectorLoginCommand
+import tech.eflink.wiki.contract.auth.ConnectorLoginRequest
+import tech.eflink.wiki.contract.auth.ConnectorLoginResult
+import tech.eflink.wiki.contract.auth.ConnectorStartCommand
+import tech.eflink.wiki.contract.auth.ConnectorStartResult
 import tech.eflink.wiki.contract.auth.GetCaptchaCommand
 import tech.eflink.wiki.contract.auth.LoginCommand
 import tech.eflink.wiki.contract.auth.LoginRequest
@@ -43,4 +50,13 @@ class AuthRestfulServiceImpl : AuthRestfulService {
         ChangePasswordCommand(request).executeWithResult()
 
     override fun captcha(): Result<CaptchaResult> = GetCaptchaCommand().executeWithResult()
+
+    override fun connectorStart(): Result<ConnectorStartResult> =
+        ConnectorStartCommand().executeWithResult()
+
+    override fun connectorLogin(@RequestBody request: ConnectorLoginRequest): Result<ConnectorLoginResult> =
+        ConnectorLoginCommand(request).executeWithResult()
+
+    override fun connectorBind(@RequestBody request: ConnectorBindRequest): Result<ConnectorLoginResult> =
+        ConnectorBindCommand(request).executeWithResult()
 }

@@ -79,7 +79,8 @@ data class WikiProperties(
     /** 账号来源：local 本地账号 / ldap 企业目录（OIDC 预留） */
     data class Auth(
         var mode: String = "local",
-        var ldap: Ldap = Ldap()
+        var ldap: Ldap = Ldap(),
+        var eflink: Eflink = Eflink()
     )
 
     data class Ldap(
@@ -94,6 +95,21 @@ data class WikiProperties(
         var externalIdAttr: String = "entryUUID",
         /** 部门/组属性（如 memberOf），登录时逐人同步为用户组；配置为空则关闭同步 */
         var groupAttr: String = "memberOf"
+    )
+
+    /**
+     * eflink 主站关联登录：登录页跳转 www.eflink.tech 授权，凭一次性票据到主站后端兑换身份。
+     * 撞名账号不自动关联，需用户在 wiki 侧输入本地密码完成授权绑定。
+     * secret 属敏感凭据，开源分发时只保留 ${WIKI_EFLINK_CONNECTOR_SECRET:} 占位，真实值放部署配置。
+     */
+    data class Eflink(
+        var enabled: Boolean = false,
+        /** eflink 主站对外地址（含 https 协议），如 https://eflink.tech */
+        var baseUrl: String = "",
+        /** 与主站 connect.wiki-secret 对应的共享密钥 */
+        var secret: String = "",
+        /** 本 wiki 对外 Origin，须与主站 connect.allowed-redirects 白名单一致，如 https://wiki-demo.eflink.tech */
+        var redirectBase: String = ""
     )
 
     /** 全文检索实现：mysql（默认，ngram）/ meilisearch */

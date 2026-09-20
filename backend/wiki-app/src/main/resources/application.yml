@@ -57,6 +57,14 @@ wiki:
       display-name-attr: cn
       email-attr: mail
       external-id-attr: entryUUID
+    # eflink 主站关联登录（跳转 www.eflink.tech 授权 + 服务端票据兑换）
+    # 开源部署：secret 只写环境变量占位符，真实密钥放发布配置；所有值留空 = 功能关闭
+    eflink:
+      enabled: ${WIKI_EFLINK_LOGIN_ENABLED:false}
+      base-url: ${WIKI_EFLINK_BASE_URL:https://eflink.tech}
+      secret: ${WIKI_EFLINK_CONNECTOR_SECRET:}
+      # 本 wiki 对外 Origin，需与主站 connect.allowed-redirects 逐字一致
+      redirect-base: ${WIKI_EFLINK_REDIRECT_BASE:https://wiki-demo.eflink.tech}
   search:
     engine: mysql                   # mysql（ngram，默认）/ meilisearch
     meili:
@@ -109,6 +117,10 @@ wiki:
       - /api/auth/login
       - /api/auth/refresh
       - /api/auth/logout
+      # eflink 主站关联登录：发起跳转 / 票据登录 / 冲突授权绑定
+      - /api/auth/connector/start
+      - /api/auth/connector/login
+      - /api/auth/connector/bind
       - /api/internal/collab/auth
       - /api/internal/collab/doc
 

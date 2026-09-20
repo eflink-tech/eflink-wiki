@@ -15,6 +15,7 @@ class PublicConfigResult : DataTransferObjectBase() {
     var captchaEnabled: Boolean = false
     var embedBackShow: Boolean = true      // 全屏编辑器是否显示包自带返回按钮
     var embedBackHref: String = ""         // 返回按钮目标地址；空 = 返回知识库页面本身
+    var eflinkLoginEnabled: Boolean = false // 是否展示 eflink 主站关联登录入口
 }
 
 class GetPublicConfigCommand : CommandObjectBase<PublicConfigResult>()

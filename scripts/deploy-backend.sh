@@ -96,6 +96,10 @@ ENV_DEST="$(dirname "${JAR_DEST}")/wiki.env"
   [ -n "${SPRING_DATASOURCE_PASSWORD:-}" ] && printf 'SPRING_DATASOURCE_PASSWORD=%q\n' "${SPRING_DATASOURCE_PASSWORD}"
   [ -n "${SPRING_FLYWAY_BASELINE_VERSION:-}" ] && printf 'SPRING_FLYWAY_BASELINE_VERSION=%q\n' "${SPRING_FLYWAY_BASELINE_VERSION}"
   [ -n "${COLLAB_PORT:-}" ]           && printf 'COLLAB_PORT=%q\n' "${COLLAB_PORT}"
+  [ -n "${WIKI_EFLINK_LOGIN_ENABLED:-}" ] && printf 'WIKI_EFLINK_LOGIN_ENABLED=%q\n' "${WIKI_EFLINK_LOGIN_ENABLED}"
+  [ -n "${WIKI_EFLINK_BASE_URL:-}" ]  && printf 'WIKI_EFLINK_BASE_URL=%q\n' "${WIKI_EFLINK_BASE_URL}"
+  [ -n "${WIKI_EFLINK_CONNECTOR_SECRET:-}" ] && printf 'WIKI_EFLINK_CONNECTOR_SECRET=%q\n' "${WIKI_EFLINK_CONNECTOR_SECRET}"
+  [ -n "${WIKI_EFLINK_REDIRECT_BASE:-}" ] && printf 'WIKI_EFLINK_REDIRECT_BASE=%q\n' "${WIKI_EFLINK_REDIRECT_BASE}"
   true
 } > /tmp/eflink-wiki.env
 echo "[local] >>> 上传环境变量 → ${ENV_DEST}"

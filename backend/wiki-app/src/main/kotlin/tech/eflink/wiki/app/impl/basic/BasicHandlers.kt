@@ -29,6 +29,9 @@ class GetPublicConfigCommandHandler(private val props: WikiProperties) :
         result.captchaEnabled = props.captchaEnabled
         result.embedBackShow = props.embed.backShow
         result.embedBackHref = props.embed.backHref
+        result.eflinkLoginEnabled = with(props.auth.eflink) {
+            enabled && baseUrl.isNotBlank() && secret.isNotBlank() && redirectBase.isNotBlank()
+        }
     }
 }
 

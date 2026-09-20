@@ -30,4 +30,16 @@ interface AuthRestfulService {
     @Operation(summary = "图形验证码", description = "返回 captchaId 与 base64 图片，5 分钟内有效，验证后立即失效")
     @GetMapping("/captcha")
     fun captcha(): Result<CaptchaResult>
+
+    @Operation(summary = "发起 eflink 主站关联登录", description = "返回主站授权中转页地址与防 CSRF state，前端整页跳转")
+    @GetMapping("/connector/start")
+    fun connectorStart(): Result<ConnectorStartResult>
+
+    @Operation(summary = "关联登录票据兑换", description = "主站回跳后凭一次性 ticket 换取登录态；撞名未关联时返回 conflict 与 bindTicket")
+    @PostMapping("/connector/login")
+    fun connectorLogin(@RequestBody request: ConnectorLoginRequest): Result<ConnectorLoginResult>
+
+    @Operation(summary = "关联登录冲突授权绑定", description = "输入冲突本地账号的密码证明归属，通过后完成关联并登录")
+    @PostMapping("/connector/bind")
+    fun connectorBind(@RequestBody request: ConnectorBindRequest): Result<ConnectorLoginResult>
 }

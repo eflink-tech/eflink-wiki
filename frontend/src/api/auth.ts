@@ -1,6 +1,8 @@
 import { request } from './client'
 import type {
   CaptchaInfo,
+  ConnectorLoginResult,
+  ConnectorStartInfo,
   LoginResult,
   PublicConfig,
   SetupStatus,
@@ -38,6 +40,18 @@ export const login = (data: {
 /** 退出登录（服务端吊销 refreshToken） */
 export const logout = (refreshToken: string) =>
   request<null>({ url: '/auth/logout', method: 'POST', data: { refreshToken } })
+
+/** 发起 eflink 主站关联登录：拿中转页地址与 state */
+export const connectorStart = () =>
+  request<ConnectorStartInfo>({ url: '/auth/connector/start', method: 'GET' })
+
+/** 主站回跳后凭一次性票据换取登录态（撞名时返回 conflict） */
+export const connectorLogin = (data: { ticket: string; state: string }) =>
+  request<ConnectorLoginResult>({ url: '/auth/connector/login', method: 'POST', data, _silent: true })
+
+/** 撞名冲突：输入本地账号密码完成授权绑定并登录 */
+export const connectorBind = (data: { bindTicket: string; password: string }) =>
+  request<ConnectorLoginResult>({ url: '/auth/connector/bind', method: 'POST', data, _silent: true })
 
 /** 修改当前用户密码 */
 export const changePassword = (data: { oldPassword: string; newPassword: string }) =>

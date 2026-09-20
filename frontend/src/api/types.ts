@@ -36,6 +36,24 @@ export interface PublicConfig {
   embedBackShow: boolean
   /** 返回按钮目标地址；空 = 返回知识库页面本身 */
   embedBackHref: string
+  /** 是否展示 eflink 主站关联登录入口 */
+  eflinkLoginEnabled?: boolean
+}
+
+/** eflink 主站关联登录：发起结果（防 CSRF state + 主站中转页地址） */
+export interface ConnectorStartInfo {
+  state: string
+  authorizeUrl: string
+}
+
+/** eflink 主站关联登录：票据兑换 / 冲突授权结果 */
+export interface ConnectorLoginResult {
+  status: 'ok' | 'conflict'
+  auth?: LoginResult | null
+  bindTicket?: string | null
+  conflictUsername?: string | null
+  /** 本次登录完成了新用户建档：据此引导创建个人专属空间 */
+  created?: boolean
 }
 
 /** 系统初始化状态 */

@@ -252,6 +252,27 @@ wiki:
 
 LDAP 用户首次登录自动建号；其所在部门组自动同步为用户组，空间管理员可把整组授权进空间。
 
+### eflink 主站关联登录（可选）
+
+登录页可增加「eflink 账号登录」入口：整页跳转 www.eflink.tech 授权，回跳后由 wiki 后端凭一次性票据到主站服务端兑换身份（简化版 OAuth2 授权码）。与 `auth.mode` 无关，local / ldap 均可叠加启用。
+
+```yaml
+wiki:
+  auth:
+    eflink:
+      enabled: ${WIKI_EFLINK_LOGIN_ENABLED:false}
+      base-url: ${WIKI_EFLINK_BASE_URL:https://eflink.tech}       # 主站对外地址
+      secret: ${WIKI_EFLINK_CONNECTOR_SECRET:}                    # 与主站 connect.wiki-secret 一致的共享密钥
+      redirect-base: ${WIKI_EFLINK_REDIRECT_BASE:https://wiki-demo.eflink.tech}  # 本 wiki 对外 Origin，须在主站回跳白名单内
+```
+
+规则说明：
+
+- 主站用户首次登录：自动建档为普通用户（role=2），前端会引导其创建个人专属工作空间（私有，仅自己可见）；
+- 与站内账号撞名且未关联：**禁止自动接管**，登录页弹出授权确认框，输入站内账号密码证明归属后才完成绑定；
+- `user.provider` 记为 `eflink`、`external_id` 存主站用户 ID，成员管理中来源列可识别；
+- 密钥只从环境变量注入（`WIKI_EFLINK_CONNECTOR_SECRET`），不要写进仓库。
+
 ### 其他可选项
 
 | 配置 | 说明 |

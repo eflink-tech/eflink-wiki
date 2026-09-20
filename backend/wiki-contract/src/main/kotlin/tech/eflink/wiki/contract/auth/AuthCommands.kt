@@ -40,3 +40,16 @@ class InitializeWorkspaceCommand(val request: SetupRequest) : CommandObjectBase<
 class GetCaptchaCommand : CommandObjectBase<CaptchaResult>()
 
 class GetSetupStatusCommand : CommandObjectBase<SetupStatusResult>()
+
+/** 发起 eflink 主站关联登录（生成 state 与中转页地址） */
+class ConnectorStartCommand : CommandObjectBase<ConnectorStartResult>()
+
+/** 关联登录票据兑换请求（整页回跳后由前端携带） */
+data class ConnectorLoginRequest(val ticket: String = "", val state: String = "")
+
+class ConnectorLoginCommand(val request: ConnectorLoginRequest) : CommandObjectBase<ConnectorLoginResult>()
+
+/** 撞名冲突授权绑定请求：用本地账号密码证明归属后完成关联 */
+data class ConnectorBindRequest(val bindTicket: String = "", val password: String = "")
+
+class ConnectorBindCommand(val request: ConnectorBindRequest) : CommandObjectBase<ConnectorLoginResult>()

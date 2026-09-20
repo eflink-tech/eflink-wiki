@@ -4,13 +4,19 @@
  * 避免 props 层层透传。
  */
 
-/** 请求打开"新建空间"弹窗 */
-export function emitOpenSpaceForm(): void {
-  window.dispatchEvent(new CustomEvent('wiki:open-space-form'))
+/** 新建空间弹窗的预填项（onboarding 引导用） */
+export interface SpaceFormPrefill {
+  name?: string
+  visibility?: 0 | 1
 }
 
-export function onOpenSpaceForm(handler: () => void): () => void {
-  const fn = () => handler()
+/** 请求打开"新建空间"弹窗，可携带预填值 */
+export function emitOpenSpaceForm(prefill?: SpaceFormPrefill): void {
+  window.dispatchEvent(new CustomEvent('wiki:open-space-form', { detail: prefill }))
+}
+
+export function onOpenSpaceForm(handler: (prefill?: SpaceFormPrefill) => void): () => void {
+  const fn = (e: Event) => handler((e as CustomEvent<SpaceFormPrefill>).detail)
   window.addEventListener('wiki:open-space-form', fn)
   return () => window.removeEventListener('wiki:open-space-form', fn)
 }

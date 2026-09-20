@@ -48,7 +48,8 @@ import { Tree } from '../components/Tree'
 import MemberManageDialog from '../components/wiki/MemberManageDialog'
 import NotificationBell from '../components/wiki/NotificationBell'
 import { uploadImage } from '../components/editor/upload'
-import { onOpenNodeCreate, onOpenSpaceForm, onTreeChanged } from '../lib/events'
+import { emitOpenSpaceForm, onOpenNodeCreate, onOpenSpaceForm, onTreeChanged, type SpaceFormPrefill } from '../lib/events'
+import { ONBOARD_SPACE_KEY } from '../pages/login'
 import { validateAvatarFile } from '../lib/avatarFile'
 import { cn } from '../lib/utils'
 import { useAuthStore } from '../store/authStore'
@@ -164,11 +165,13 @@ function SidebarLink({
 function SpaceFormDialog({
   mode,
   space,
+  prefill,
   onClose,
   onSubmit,
 }: {
   mode: 'create' | 'edit'
   space?: Space | null
+  prefill?: SpaceFormPrefill
   onClose: () => void
   onSubmit: (values: {
     name: string
@@ -178,10 +181,10 @@ function SpaceFormDialog({
   }) => Promise<void>
 }) {
   const [values, setValues] = useState({
-    name: space?.name ?? '',
+    name: space?.name ?? prefill?.name ?? '',
     icon: space?.icon ?? '',
     description: space?.description ?? '',
-    visibility: (space?.visibility ?? 1) as 0 | 1,
+    visibility: (space?.visibility ?? prefill?.visibility ?? 1) as 0 | 1,
   })
   const [saving, setSaving] = useState(false)
 
@@ -530,7 +533,7 @@ export default function AppLayout() {
   const [spaceManageOpen, setSpaceManageOpen] = useState(false)
   const [memberManageSpaceId, setMemberManageSpaceId] = useState<number | null>(null)
   const [spaceForm, setSpaceForm] = useState<
-    { mode: 'create' | 'edit'; space?: Space } | null
+    { mode: 'create' | 'edit'; space?: Space; prefill?: SpaceFormPrefill } | null
   >(null)
   const [nodeCreate, setNodeCreate] = useState<{ parentId: number | null } | null>(null)
   const [nodeRename, setNodeRename] = useState<TreeNode | null>(null)
@@ -600,8 +603,24 @@ export default function AppLayout() {
     }
   }, [tree, currentNodeId])
 
+  // 关联登录新建档案后：引导创建个人专属空间（私有，仅自己可见）
+  const onboardedRef = useRef(false)
+  useEffect(() => {
+    if (onboardedRef.current || !user || !spacesLoaded) return
+    if (sessionStorage.getItem(ONBOARD_SPACE_KEY) !== '1') return
+    // 只看"我名下的空间"：全站可读空间人人可见，不能据此判断用户已有自己的空间
+    if (spaces.some((s) => s.ownerId === user.id) || location.pathname !== '/app') return
+    onboardedRef.current = true
+    sessionStorage.removeItem(ONBOARD_SPACE_KEY)
+    toast.info('欢迎！先创建一个专属工作空间吧，仅自己可见')
+    emitOpenSpaceForm({
+      name: `${user.displayName || user.username || '我'} 的知识库`,
+      visibility: 0,
+    })
+  }, [user, spacesLoaded, spaces, location.pathname])
+
   // 事件总线：其他页面请求打开新建空间 / 新建页面弹窗；编辑页改标题后刷新树
-  useEffect(() => onOpenSpaceForm(() => setSpaceForm({ mode: 'create' })), [])
+  useEffect(() => onOpenSpaceForm((prefill) => setSpaceForm({ mode: 'create', prefill })), [])
   useEffect(() => onOpenNodeCreate((parentId) => setNodeCreate({ parentId })), [])
   useEffect(
     () =>
@@ -1231,6 +1250,7 @@ export default function AppLayout() {
         <SpaceFormDialog
           mode={spaceForm.mode}
           space={spaceForm.space}
+          prefill={spaceForm.prefill}
           onClose={() => setSpaceForm(null)}
           onSubmit={handleSpaceSubmit}
         />
