@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/screenshots/logo.png" width="88" alt="eflink-wiki">
+<img src="https://image.eflink.tech/promo/logo.png" width="88" alt="eflink-wiki">
 
 # eflink-wiki
 
@@ -34,22 +34,22 @@ eflink-wiki 是对标 ONES Wiki / Confluence 核心体验的独立知识库系�
 
 | 工作台 | 块编辑器 |
 |---|---|
-| ![工作台](docs/screenshots/home.png) | ![块编辑器](docs/screenshots/editor.png) |
+| ![工作台](https://image.eflink.tech/promo/wiki-home.png) | ![块编辑器](https://image.eflink.tech/promo/wiki-editor.png) |
 | **斜杠插入菜单（20+ 内容块）** | **页面阅读视图（嵌入块 + 附件预览）** |
-| ![插入菜单](docs/screenshots/editor-blocks.png) | ![阅读视图](docs/screenshots/page-view.png) |
+| ![插入菜单](https://image.eflink.tech/promo/wiki-editor-blocks.png) | ![阅读视图](https://image.eflink.tech/promo/wiki-page-view.png) |
 | **空间成员与权限管理** | **空间数据统计** |
-| ![成员权限](docs/screenshots/space-members.png) | ![数据统计](docs/screenshots/stats.png) |
+| ![成员权限](https://image.eflink.tech/promo/wiki-space-members.png) | ![数据统计](https://image.eflink.tech/promo/wiki-stats.png) |
 
 <details>
 <summary>更多截图</summary>
 
 | 空间页面树 | 全文检索 |
 |---|---|
-| ![页面树](docs/screenshots/space-tree.png) | ![全文检索](docs/screenshots/search.png) |
+| ![页面树](https://image.eflink.tech/promo/wiki-space-tree.png) | ![全文检索](https://image.eflink.tech/promo/wiki-search.png) |
 | **版本历史与回滚** | **页面模板** |
-| ![版本历史](docs/screenshots/versions.png) | ![页面模板](docs/screenshots/templates.png) |
+| ![版本历史](https://image.eflink.tech/promo/wiki-versions.png) | ![页面模板](https://image.eflink.tech/promo/wiki-templates.png) |
 | **管理后台用户管理** | **版本对比 diff** |
-| ![用户管理](docs/screenshots/admin-users.png) | ![版本对比](docs/screenshots/version-diff.png) |
+| ![用户管理](https://image.eflink.tech/promo/wiki-admin-users.png) | ![版本对比](https://image.eflink.tech/promo/wiki-version-diff.png) |
 
 </details>
 
@@ -287,7 +287,7 @@ LDAP 用户首次登录自动建号；其所在部门组自动同步为用户组
 - **企业微信**：扫码添加，反馈问题、交流建议与获取支持
 
 <p align="center">
-  <img src="docs/screenshots/wecom-contact-qr.png" width="200" alt="企业微信二维码">
+  <img src="https://image.eflink.tech/promo/wecom-contact-qr.png" width="200" alt="企业微信二维码">
 </p>
 
 ## 🗺️ Roadmap
