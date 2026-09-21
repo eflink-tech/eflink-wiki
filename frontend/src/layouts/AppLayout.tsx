@@ -43,8 +43,10 @@ import { ConfirmDialog, Dialog } from '../components/Dialog'
 import { Dropdown, DropdownDivider, DropdownItem } from '../components/Dropdown'
 import { Input, Textarea } from '../components/Input'
 import { Spinner } from '../components/Loading'
+import { SplitHandle } from '../components/SplitHandle'
 import { toast } from '../components/Toast'
 import { Tree } from '../components/Tree'
+import { useResizableSplit } from '../hooks/useResizableSplit'
 import MemberManageDialog from '../components/wiki/MemberManageDialog'
 import NotificationBell from '../components/wiki/NotificationBell'
 import { uploadImage } from '../components/editor/upload'
@@ -59,6 +61,29 @@ const SPACE_ROLE_NAMES: Record<number, string> = {
   1: '管理员',
   2: '编辑者',
   3: '查看者',
+}
+
+/** 侧栏宽度持久化 key 与默认宽度（px） */
+const SIDEBAR_WIDTH_KEY = 'wiki-sidebar-width'
+const DEFAULT_SIDEBAR_WIDTH = 264
+
+/** 读取持久化的侧栏宽度，非法值回退默认宽度 */
+function readSidebarWidth(): number {
+  try {
+    const n = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY))
+    return Number.isFinite(n) && n > 0 ? n : DEFAULT_SIDEBAR_WIDTH
+  } catch {
+    return DEFAULT_SIDEBAR_WIDTH
+  }
+}
+
+/** 持久化侧栏宽度（隐私模式等存储不可用时忽略，仅本次会话内生效） */
+function writeSidebarWidth(width: number): void {
+  try {
+    localStorage.setItem(SIDEBAR_WIDTH_KEY, String(width))
+  } catch {
+    // 忽略存储异常
+  }
 }
 
 /** 在整树中查找 targetId 的祖先链（含自身），找不到返回 null */
@@ -510,6 +535,13 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const user = useAuthStore((s) => s.user)
+
+  // 侧栏拖拽调宽：宽度持久化到 localStorage，双击手柄重置为默认宽度
+  const [initialSidebarWidth] = useState(readSidebarWidth)
+  const { containerRef, leftStyle, dragging, handleProps } = useResizableSplit({
+    initialWidth: initialSidebarWidth,
+    onWidthCommit: writeSidebarWidth,
+  })
 
   const { spaceId, nodeId: currentNodeId } = useMemo(
     () => parsePath(location.pathname),
@@ -1011,9 +1043,12 @@ export default function AppLayout() {
         </Dropdown>
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        {/* ================= 侧栏（264px） ================= */}
-        <aside className="flex w-[264px] shrink-0 flex-col border-r border-line bg-surface">
+      <div
+        ref={containerRef}
+        className={cn('flex min-h-0 flex-1', dragging && 'cursor-col-resize select-none')}
+      >
+        {/* ================= 侧栏（可拖拽调宽，默认 264px） ================= */}
+        <aside style={leftStyle} className="flex shrink-0 flex-col border-r border-line bg-surface">
           {/* 空间卡：头像 + 名称 + 角色 chip + 成员数；点击切换空间 */}
           <div className="p-3 pb-1.5">
             <Dropdown
@@ -1177,6 +1212,9 @@ export default function AppLayout() {
             </div>
           </div>
         </aside>
+
+        {/* 拖拽手柄：调整侧栏与内容区宽度，双击重置 */}
+        <SplitHandle dragging={dragging} {...handleProps} />
 
         {/* ================= 主区内容（列表页灰底、页面自绘卡片；阅读/编辑页自绘白画布） ================= */}
         <main className="min-w-0 flex-1 overflow-y-auto">
