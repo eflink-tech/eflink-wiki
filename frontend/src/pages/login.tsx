@@ -9,13 +9,13 @@ import { useAuthStore } from '../store/authStore'
 import eflinkLogoUrl from '../assets/eflink-logo.png'
 import logoUrl from '../assets/wiki-logo.png'
 
-/** 关联登录防 CSRF state 的会话级存储键 */
-const CONNECTOR_STATE_KEY = 'wiki_connector_state'
+/** 关联登录防 CSRF state 的会话级存储键（按 provider 区分） */
+const connectorStateKey = (provider: string) => `wiki_connector_state_${provider}`
 
 /** 新用户建档后引导创建个人专属空间的标记键 */
 export const ONBOARD_SPACE_KEY = 'wiki_onboard_space'
 
-/** 登录页：账号 + 密码，captchaEnabled 时展示图形验证码（可点击刷新）；支持 eflink 主站关联登录 */
+/** 登录页：账号 + 密码，captchaEnabled 时展示图形验证码（可点击刷新）；支持外部系统关联登录 */
 export default function LoginPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
@@ -27,7 +27,7 @@ export default function LoginPage() {
   const [captchaCode, setCaptchaCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  // 主站关联登录：跳转中 / 撞名待授权绑定
+  // 外部系统关联登录：跳转中 / 撞名待授权绑定
   const [connecting, setConnecting] = useState(false)
   const [conflict, setConflict] = useState<{ bindTicket: string; username: string } | null>(null)
   const [bindPassword, setBindPassword] = useState('')
@@ -52,23 +52,26 @@ export default function LoginPage() {
     }
   }, [])
 
-  /** 主站整页回跳携带 ticket：校验 state 后兑换登录态 */
+  /** 外部系统整页回跳携带 ticket：校验 state 后兑换登录态 */
   useEffect(() => {
+    const connector = searchParams.get('connector')
     const ticket = searchParams.get('ticket')
     const state = searchParams.get('state')
-    if (searchParams.get('connector') !== 'eflink' || !ticket || ticketHandledRef.current) return
+    if (!connector || !ticket || ticketHandledRef.current) return
     ticketHandledRef.current = true
-    const savedState = sessionStorage.getItem(CONNECTOR_STATE_KEY)
-    sessionStorage.removeItem(CONNECTOR_STATE_KEY)
+    const savedState = sessionStorage.getItem(connectorStateKey(connector))
+    sessionStorage.removeItem(connectorStateKey(connector))
     // 清掉 URL 上的一次性票据，避免刷新重放
     setSearchParams({}, { replace: true })
-    if (!savedState || savedState !== state) {
+    // 浏览器侧 state 比对仅在「从本页发起授权」时执行；外部系统直达链接无预存 state，
+    // 由服务端比对票据回传的 state（identity.state === request.state）兜底
+    if (savedState && savedState !== state) {
       setError('授权校验失败，请重新发起登录')
       return
     }
     setLoading(true)
     authApi
-      .connectorLogin({ ticket, state: state ?? '' })
+      .connectorLogin({ provider: connector, ticket, state: state ?? '' })
       .then((res) => {
         if (res.status === 'conflict' && res.bindTicket) {
           setConflict({ bindTicket: res.bindTicket, username: res.conflictUsername ?? '' })
@@ -120,13 +123,13 @@ export default function LoginPage() {
     }
   }
 
-  /** 整页跳转主站授权（state 存 sessionStorage 供回跳校验） */
-  const startConnector = async () => {
+  /** 整页跳转对方系统授权（state 存 sessionStorage 供回跳校验） */
+  const startConnector = async (provider: string) => {
     setConnecting(true)
     setError('')
     try {
-      const res = await authApi.connectorStart()
-      sessionStorage.setItem(CONNECTOR_STATE_KEY, res.state)
+      const res = await authApi.connectorStart(provider)
+      sessionStorage.setItem(connectorStateKey(provider), res.state)
       window.location.href = res.authorizeUrl
     } catch (err) {
       setError(err instanceof Error ? err.message : '发起授权失败，请稍后重试')
@@ -216,24 +219,36 @@ export default function LoginPage() {
             登 录
           </Button>
         </form>
-        {config?.eflinkLoginEnabled && (
-          <>
-            <div className="my-5 flex items-center gap-3">
-              <span className="h-px flex-1 bg-slate-100" />
-              <span className="text-[11px] text-slate-300">或</span>
-              <span className="h-px flex-1 bg-slate-100" />
-            </div>
-            <Button
-              variant="default"
-              className="w-full"
-              loading={connecting}
-              onClick={() => void startConnector()}
-            >
-              <img src={eflinkLogoUrl} alt="" className="mr-1.5 h-4 w-4 rounded" draggable={false} />
-              易飞办公账号登录
-            </Button>
-          </>
-        )}
+        {(() => {
+          // 外部系统关联登录按钮：后端下发已启用通道；旧后端无 connectors 字段时按 eflink 开关兜底
+          const connectors =
+            config?.connectors?.filter((c) => c.provider && c.label) ??
+            (config?.eflinkLoginEnabled ? [{ provider: 'eflink', label: '易飞办公账号登录' }] : [])
+          if (connectors.length === 0) return null
+          return (
+            <>
+              <div className="my-5 flex items-center gap-3">
+                <span className="h-px flex-1 bg-slate-100" />
+                <span className="text-[11px] text-slate-300">或</span>
+                <span className="h-px flex-1 bg-slate-100" />
+              </div>
+              {connectors.map((c) => (
+                <Button
+                  key={c.provider}
+                  variant="default"
+                  className="mb-2 w-full last:mb-0"
+                  loading={connecting}
+                  onClick={() => void startConnector(c.provider)}
+                >
+                  {c.provider === 'eflink' && (
+                    <img src={eflinkLogoUrl} alt="" className="mr-1.5 h-4 w-4 rounded" draggable={false} />
+                  )}
+                  {c.label}
+                </Button>
+              ))}
+            </>
+          )
+        })()}
         <p className="mt-6 text-center text-[11px] text-slate-300">
           账号由管理员统一创建，如需开通请联系管理员
         </p>
@@ -259,7 +274,7 @@ export default function LoginPage() {
         }
       >
         <p className="text-sm leading-6 text-slate-600">
-          主站账号 <b>{conflict?.username}</b> 与站内已有账号同名。为防止账号被误接管，
+          外部账号 <b>{conflict?.username}</b> 与站内已有账号同名。为防止账号被误接管，
           请输入站内账号密码以证明归属并完成关联。
         </p>
         <div className="mt-3">

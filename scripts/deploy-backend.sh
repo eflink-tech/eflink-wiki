@@ -2,19 +2,26 @@
 #
 # 用途：wiki 后端一站式部署（在本地运行）
 #       编译 JAR → 上传 → 服务器部署（停旧进程→换 JAR→启动→健康检查）
-# 用法：./scripts/deploy-backend.sh
+# 用法：./scripts/deploy-backend.sh [环境名]
+#       环境名对应 scripts/deploy.<环境名>.env（多服务器场景；缺省读取 scripts/deploy.env）
 #
-# 前置：已配置 scripts/deploy.env（参考 deploy.env.example）
+# 前置：已配置对应 env 文件（参考 deploy.env.example）
 #
 set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 ROOT_DIR=$(cd -- "${SCRIPT_DIR}/.." &>/dev/null && pwd)
+
+# 支持多服务器：第一个参数（或环境变量 WIKI_DEPLOY_ENV）指定环境名
+ENV_NAME="${1:-${WIKI_DEPLOY_ENV:-}}"
 ENV_FILE="${SCRIPT_DIR}/deploy.env"
+if [ -n "${ENV_NAME}" ]; then
+  ENV_FILE="${SCRIPT_DIR}/deploy.${ENV_NAME}.env"
+fi
 
 if [ ! -f "${ENV_FILE}" ]; then
   echo "[deploy] ERROR: 未找到 ${ENV_FILE}" >&2
-  echo "[deploy]        请先执行：cp scripts/deploy.env.example scripts/deploy.env 并填写" >&2
+  echo "[deploy]        请先执行：cp scripts/deploy.env.example ${ENV_FILE} 并填写" >&2
   exit 1
 fi
 # shellcheck disable=SC1090
@@ -100,6 +107,14 @@ ENV_DEST="$(dirname "${JAR_DEST}")/wiki.env"
   [ -n "${WIKI_EFLINK_BASE_URL:-}" ]  && printf 'WIKI_EFLINK_BASE_URL=%q\n' "${WIKI_EFLINK_BASE_URL}"
   [ -n "${WIKI_EFLINK_CONNECTOR_SECRET:-}" ] && printf 'WIKI_EFLINK_CONNECTOR_SECRET=%q\n' "${WIKI_EFLINK_CONNECTOR_SECRET}"
   [ -n "${WIKI_EFLINK_REDIRECT_BASE:-}" ] && printf 'WIKI_EFLINK_REDIRECT_BASE=%q\n' "${WIKI_EFLINK_REDIRECT_BASE}"
+  [ -n "${WIKI_BECBAS_LOGIN_ENABLED:-}" ] && printf 'WIKI_BECBAS_LOGIN_ENABLED=%q\n' "${WIKI_BECBAS_LOGIN_ENABLED}"
+  [ -n "${WIKI_BECBAS_BASE_URL:-}" ]  && printf 'WIKI_BECBAS_BASE_URL=%q\n' "${WIKI_BECBAS_BASE_URL}"
+  [ -n "${WIKI_BECBAS_CONNECTOR_SECRET:-}" ] && printf 'WIKI_BECBAS_CONNECTOR_SECRET=%q\n' "${WIKI_BECBAS_CONNECTOR_SECRET}"
+  [ -n "${WIKI_BECBAS_REDIRECT_BASE:-}" ] && printf 'WIKI_BECBAS_REDIRECT_BASE=%q\n' "${WIKI_BECBAS_REDIRECT_BASE}"
+  [ -n "${WIKI_BECBAS_LABEL:-}" ]     && printf 'WIKI_BECBAS_LABEL=%q\n' "${WIKI_BECBAS_LABEL}"
+  [ -n "${WIKI_BECBAS_LOGIN_BUTTON:-}" ] && printf 'WIKI_BECBAS_LOGIN_BUTTON=%q\n' "${WIKI_BECBAS_LOGIN_BUTTON}"
+  [ -n "${WIKI_BECBAS_AUTHORIZE_PATH:-}" ] && printf 'WIKI_BECBAS_AUTHORIZE_PATH=%q\n' "${WIKI_BECBAS_AUTHORIZE_PATH}"
+  [ -n "${WIKI_BECBAS_EXCHANGE_PATH:-}" ] && printf 'WIKI_BECBAS_EXCHANGE_PATH=%q\n' "${WIKI_BECBAS_EXCHANGE_PATH}"
   true
 } > /tmp/eflink-wiki.env
 echo "[local] >>> 上传环境变量 → ${ENV_DEST}"

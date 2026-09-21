@@ -3,19 +3,26 @@
 # 用途：wiki 前端一站式部署（在本地运行）
 #       本机构建（依赖 monorepo 兄弟目录 @eflink-tech/* 软链，构建必须在本机完成）
 #       → 上传 → 服务器部署（备份旧版本→清空并解压→reload nginx）
-# 用法：./scripts/deploy-frontend.sh
+# 用法：./scripts/deploy-frontend.sh [环境名]
+#       环境名对应 scripts/deploy.<环境名>.env（多服务器场景；缺省读取 scripts/deploy.env）
 #
-# 前置：已配置 scripts/deploy.env（REMOTE_FRONTEND_DIR）
+# 前置：已配置对应 env 文件（REMOTE_FRONTEND_DIR）
 #
 set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 ROOT_DIR=$(cd -- "${SCRIPT_DIR}/.." &>/dev/null && pwd)
+
+# 支持多服务器：第一个参数（或环境变量 WIKI_DEPLOY_ENV）指定环境名
+ENV_NAME="${1:-${WIKI_DEPLOY_ENV:-}}"
 ENV_FILE="${SCRIPT_DIR}/deploy.env"
+if [ -n "${ENV_NAME}" ]; then
+  ENV_FILE="${SCRIPT_DIR}/deploy.${ENV_NAME}.env"
+fi
 
 if [ ! -f "${ENV_FILE}" ]; then
   echo "[deploy] ERROR: 未找到 ${ENV_FILE}" >&2
-  echo "[deploy]        请先执行：cp scripts/deploy.env.example scripts/deploy.env 并填写" >&2
+  echo "[deploy]        请先执行：cp scripts/deploy.env.example ${ENV_FILE} 并填写" >&2
   exit 1
 fi
 # shellcheck disable=SC1090

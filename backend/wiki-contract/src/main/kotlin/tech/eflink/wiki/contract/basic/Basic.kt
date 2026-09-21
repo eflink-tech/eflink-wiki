@@ -15,7 +15,15 @@ class PublicConfigResult : DataTransferObjectBase() {
     var captchaEnabled: Boolean = false
     var embedBackShow: Boolean = true      // 全屏编辑器是否显示包自带返回按钮
     var embedBackHref: String = ""         // 返回按钮目标地址；空 = 返回知识库页面本身
-    var eflinkLoginEnabled: Boolean = false // 是否展示 eflink 主站关联登录入口
+    var eflinkLoginEnabled: Boolean = false // （兼容保留）是否展示 eflink 主站关联登录入口
+    /** 外部系统关联登录通道列表（仅含 loginButton=true 且有文案的，登录页据此渲染按钮） */
+    var connectors: List<ConnectorInfo> = emptyList()
+}
+
+/** 外部系统关联登录通道信息 */
+class ConnectorInfo : DataTransferObjectBase() {
+    var provider: String = ""   // 外部系统标识（user.provider）
+    var label: String = ""      // 登录页按钮文案
 }
 
 class GetPublicConfigCommand : CommandObjectBase<PublicConfigResult>()

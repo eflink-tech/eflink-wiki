@@ -80,8 +80,41 @@ data class WikiProperties(
     data class Auth(
         var mode: String = "local",
         var ldap: Ldap = Ldap(),
-        var eflink: Eflink = Eflink()
-    )
+        @Deprecated("改用 connectors 注册表（connectors[\"eflink\"]），保留仅为兼容未迁移的旧配置")
+        var eflink: Eflink = Eflink(),
+        /** 外部系统关联登录注册表：key 为 provider 标识（user.provider），如 eflink、becbas */
+        var connectors: MutableMap<String, Connector> = mutableMapOf()
+    ) {
+        /**
+         * 按 provider 解析 connector 配置：注册表优先；
+         * 未注册 eflink 键时回退 legacy auth.eflink 配置（旧部署零迁移继续可用）。
+         */
+        fun connector(provider: String): Connector? {
+            connectors[provider]?.let { return it }
+            if (provider == "eflink") {
+                @Suppress("DEPRECATION")
+                val legacy = eflink
+                if (legacy.baseUrl.isNotBlank() || legacy.secret.isNotBlank() || legacy.redirectBase.isNotBlank()) {
+                    return Connector(
+                        enabled = legacy.enabled,
+                        baseUrl = legacy.baseUrl,
+                        secret = legacy.secret,
+                        redirectBase = legacy.redirectBase,
+                        label = "易飞办公账号登录"
+                    )
+                }
+            }
+            return null
+        }
+
+        /** 已启用且配置完整的 connector 列表（provider to 配置），公开配置/登录页按钮渲染用 */
+        fun enabledConnectors(): List<Pair<String, Connector>> =
+            (if (connectors.containsKey("eflink")) connectors else connectors + ("eflink" to (connector("eflink") ?: Connector())))
+                .entries
+                .filter { it.value.enabled && it.value.baseUrl.isNotBlank() && it.value.secret.isNotBlank() && it.value.redirectBase.isNotBlank() }
+                .map { it.key to it.value }
+                .sortedBy { it.first }
+    }
 
     data class Ldap(
         var host: String = "127.0.0.1",
@@ -98,10 +131,29 @@ data class WikiProperties(
     )
 
     /**
-     * eflink 主站关联登录：登录页跳转 www.eflink.tech 授权，凭一次性票据到主站后端兑换身份。
-     * 撞名账号不自动关联，需用户在 wiki 侧输入本地密码完成授权绑定。
-     * secret 属敏感凭据，开源分发时只保留 ${WIKI_EFLINK_CONNECTOR_SECRET:} 占位，真实值放部署配置。
+     * 外部系统关联登录（connector）配置：对方系统按协议提供「授权中转页」与「票据兑换接口」，
+     * 以共享密钥鉴权，票据一次性、短期有效。user.provider 存注册表 key。
+     * secret 属敏感凭据，开源分发时只保留环境变量占位符，真实值放部署配置。
      */
+    data class Connector(
+        var enabled: Boolean = false,
+        /** 对方系统对外地址（含 https 协议），如 https://eflink.tech */
+        var baseUrl: String = "",
+        /** 与对方系统约定的共享密钥（服务端对服务端兑换票据时随请求提交） */
+        var secret: String = "",
+        /** 本 wiki 对外 Origin，须逐字加入对方系统的回跳白名单，如 https://wiki.becbas.com.cn */
+        var redirectBase: String = "",
+        /** 登录页按钮文案；空则登录页不展示该通道按钮 */
+        var label: String = "",
+        /** 登录页是否展示「账号登录」按钮（外部系统内自带入口直达的可关闭） */
+        var loginButton: Boolean = true,
+        /** 对方系统授权中转页路径（前端整页跳转），如 /connect/wiki */
+        var authorizePath: String = "/connect/wiki",
+        /** 对方系统票据兑换接口路径（服务端对服务端），如 /api/internal/connect/exchange */
+        var exchangePath: String = "/api/internal/connect/exchange"
+    )
+
+    @Deprecated("改用 Connector（connectors 注册表），保留仅为兼容旧配置")
     data class Eflink(
         var enabled: Boolean = false,
         /** eflink 主站对外地址（含 https 协议），如 https://eflink.tech */

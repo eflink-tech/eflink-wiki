@@ -3,10 +3,12 @@ package tech.eflink.wiki.contract.auth
 import tech.eflink.wiki.core.communication.EmptyResult
 import tech.eflink.wiki.core.dto.Result
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestParam
 
 @Tag(name = "认证服务", description = "登录 / 刷新令牌 / 登出 / 修改密码 / 图形验证码 / 首次初始化")
 interface AuthRestfulService {
@@ -31,9 +33,12 @@ interface AuthRestfulService {
     @GetMapping("/captcha")
     fun captcha(): Result<CaptchaResult>
 
-    @Operation(summary = "发起 eflink 主站关联登录", description = "返回主站授权中转页地址与防 CSRF state，前端整页跳转")
+    @Operation(summary = "发起外部系统关联登录", description = "返回对方系统授权中转页地址与防 CSRF state，前端整页跳转；provider 缺省 eflink")
     @GetMapping("/connector/start")
-    fun connectorStart(): Result<ConnectorStartResult>
+    fun connectorStart(
+        @Parameter(description = "外部系统标识（user.provider），如 eflink、becbas")
+        @RequestParam(required = false, defaultValue = "eflink") provider: String
+    ): Result<ConnectorStartResult>
 
     @Operation(summary = "关联登录票据兑换", description = "主站回跳后凭一次性 ticket 换取登录态；撞名未关联时返回 conflict 与 bindTicket")
     @PostMapping("/connector/login")

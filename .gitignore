@@ -21,8 +21,8 @@ backend/deploy/keys/
 *.log
 tmp/
 
-# 部署配置（含服务器地址与密钥，切勿提交）
-scripts/deploy.env
+# 部署配置（含服务器地址与密钥，切勿提交；多环境文件如 deploy.prod.env 一并忽略，模板 deploy.env.example 除外）
+scripts/deploy*.env
 
 # 内部开发过程产物（不随开源分发）
 .superpowers/

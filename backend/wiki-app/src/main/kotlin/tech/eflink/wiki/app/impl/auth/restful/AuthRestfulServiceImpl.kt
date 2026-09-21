@@ -20,6 +20,7 @@ import tech.eflink.wiki.contract.auth.ConnectorLoginCommand
 import tech.eflink.wiki.contract.auth.ConnectorLoginRequest
 import tech.eflink.wiki.contract.auth.ConnectorLoginResult
 import tech.eflink.wiki.contract.auth.ConnectorStartCommand
+import tech.eflink.wiki.contract.auth.ConnectorStartRequest
 import tech.eflink.wiki.contract.auth.ConnectorStartResult
 import tech.eflink.wiki.contract.auth.GetCaptchaCommand
 import tech.eflink.wiki.contract.auth.LoginCommand
@@ -51,8 +52,8 @@ class AuthRestfulServiceImpl : AuthRestfulService {
 
     override fun captcha(): Result<CaptchaResult> = GetCaptchaCommand().executeWithResult()
 
-    override fun connectorStart(): Result<ConnectorStartResult> =
-        ConnectorStartCommand().executeWithResult()
+    override fun connectorStart(provider: String): Result<ConnectorStartResult> =
+        ConnectorStartCommand(ConnectorStartRequest(provider)).executeWithResult()
 
     override fun connectorLogin(@RequestBody request: ConnectorLoginRequest): Result<ConnectorLoginResult> =
         ConnectorLoginCommand(request).executeWithResult()

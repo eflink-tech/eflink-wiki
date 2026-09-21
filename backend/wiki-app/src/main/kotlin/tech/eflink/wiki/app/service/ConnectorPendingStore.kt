@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap
 class ConnectorPendingStore {
 
     data class Pending(
+        val provider: String,
         val externalId: String,
         val username: String,
         val email: String?,
@@ -21,14 +22,14 @@ class ConnectorPendingStore {
 
     private val entries = ConcurrentHashMap<String, Pending>()
 
-    fun put(externalId: String, username: String, email: String?): String {
+    fun put(provider: String, externalId: String, username: String, email: String?): String {
         purgeExpired()
         if (entries.size >= MAX_ENTRIES) {
             // 容量兜底：极小概率并发洪峰，直接拒绝新请求而不是挤掉他人会话
             throw IllegalStateException("授权绑定服务繁忙，请稍后重试")
         }
         val token = UUID.randomUUID().toString().replace("-", "")
-        entries[token] = Pending(externalId, username, email, System.currentTimeMillis() + TTL_MILLIS)
+        entries[token] = Pending(provider, externalId, username, email, System.currentTimeMillis() + TTL_MILLIS)
         return token
     }
 

@@ -36,17 +36,27 @@ export interface PublicConfig {
   embedBackShow: boolean
   /** 返回按钮目标地址；空 = 返回知识库页面本身 */
   embedBackHref: string
-  /** 是否展示 eflink 主站关联登录入口 */
+  /** （兼容保留）是否展示 eflink 主站关联登录入口 */
   eflinkLoginEnabled?: boolean
+  /** 外部系统关联登录通道（登录页据此渲染按钮；后端只下发 loginButton=true 且有文案的） */
+  connectors?: ConnectorInfo[]
 }
 
-/** eflink 主站关联登录：发起结果（防 CSRF state + 主站中转页地址） */
+/** 外部系统关联登录通道 */
+export interface ConnectorInfo {
+  /** 外部系统标识（user.provider），如 eflink、becbas */
+  provider: string
+  /** 登录页按钮文案 */
+  label: string
+}
+
+/** 外部系统关联登录：发起结果（防 CSRF state + 对方系统中转页地址） */
 export interface ConnectorStartInfo {
   state: string
   authorizeUrl: string
 }
 
-/** eflink 主站关联登录：票据兑换 / 冲突授权结果 */
+/** 外部系统关联登录：票据兑换 / 冲突授权结果 */
 export interface ConnectorLoginResult {
   status: 'ok' | 'conflict'
   auth?: LoginResult | null

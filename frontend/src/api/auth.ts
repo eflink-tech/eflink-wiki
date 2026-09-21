@@ -41,12 +41,15 @@ export const login = (data: {
 export const logout = (refreshToken: string) =>
   request<null>({ url: '/auth/logout', method: 'POST', data: { refreshToken } })
 
-/** 发起 eflink 主站关联登录：拿中转页地址与 state */
-export const connectorStart = () =>
-  request<ConnectorStartInfo>({ url: '/auth/connector/start', method: 'GET' })
+/** 发起外部系统关联登录：拿对方系统中转页地址与 state（provider 缺省 eflink） */
+export const connectorStart = (provider = 'eflink') =>
+  request<ConnectorStartInfo>({
+    url: `/auth/connector/start?provider=${encodeURIComponent(provider)}`,
+    method: 'GET',
+  })
 
-/** 主站回跳后凭一次性票据换取登录态（撞名时返回 conflict） */
-export const connectorLogin = (data: { ticket: string; state: string }) =>
+/** 对方系统回跳后凭一次性票据换取登录态（撞名时返回 conflict） */
+export const connectorLogin = (data: { provider?: string; ticket: string; state: string }) =>
   request<ConnectorLoginResult>({ url: '/auth/connector/login', method: 'POST', data, _silent: true })
 
 /** 撞名冲突：输入本地账号密码完成授权绑定并登录 */

@@ -57,14 +57,27 @@ wiki:
       display-name-attr: cn
       email-attr: mail
       external-id-attr: entryUUID
-    # eflink 主站关联登录（跳转 www.eflink.tech 授权 + 服务端票据兑换）
-    # 开源部署：secret 只写环境变量占位符，真实密钥放发布配置；所有值留空 = 功能关闭
-    eflink:
-      enabled: ${WIKI_EFLINK_LOGIN_ENABLED:false}
-      base-url: ${WIKI_EFLINK_BASE_URL:https://eflink.tech}
-      secret: ${WIKI_EFLINK_CONNECTOR_SECRET:}
-      # 本 wiki 对外 Origin，需与主站 connect.allowed-redirects 逐字一致
-      redirect-base: ${WIKI_EFLINK_REDIRECT_BASE:https://wiki-demo.eflink.tech}
+    # 外部系统关联登录（connector）注册表：key 为 provider 标识（user.provider），如 eflink、becbas
+    # 协议：对方系统提供「授权中转页 + 票据兑换接口」，共享密钥鉴权，票据一次性、短期有效
+    # 开源部署：secret 只写环境变量占位符，真实密钥放发布配置；enabled=false 或值留空 = 该通道关闭
+    connectors:
+      eflink:
+        enabled: ${WIKI_EFLINK_LOGIN_ENABLED:false}
+        base-url: ${WIKI_EFLINK_BASE_URL:https://eflink.tech}
+        secret: ${WIKI_EFLINK_CONNECTOR_SECRET:}
+        # 本 wiki 对外 Origin，需逐字加入对方系统回跳白名单
+        redirect-base: ${WIKI_EFLINK_REDIRECT_BASE:https://wiki-demo.eflink.tech}
+        label: 易飞办公账号登录
+      becbas:
+        enabled: ${WIKI_BECBAS_LOGIN_ENABLED:false}
+        base-url: ${WIKI_BECBAS_BASE_URL:}
+        secret: ${WIKI_BECBAS_CONNECTOR_SECRET:}
+        redirect-base: ${WIKI_BECBAS_REDIRECT_BASE:}
+        label: ${WIKI_BECBAS_LABEL:becbas 账号登录}
+        # becbas 用户从其系统右上角直达进入，登录页不展示按钮；对方补中转页后可开启
+        login-button: ${WIKI_BECBAS_LOGIN_BUTTON:false}
+        authorize-path: ${WIKI_BECBAS_AUTHORIZE_PATH:/connect/wiki}
+        exchange-path: ${WIKI_BECBAS_EXCHANGE_PATH:/open/wiki/sso/exchange}
   search:
     engine: mysql                   # mysql（ngram，默认）/ meilisearch
     meili:

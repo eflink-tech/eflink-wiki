@@ -118,6 +118,19 @@ cp scripts/deploy.env.example scripts/deploy.env   # 填写服务器地址与密
 ./scripts/deploy-all.sh
 ```
 
+### 部署到多台服务器
+
+脚本默认读取 `scripts/deploy.env`；为每台服务器建一份独立配置 `scripts/deploy.<环境名>.env`，部署时把环境名作为第一个参数传入即可（同样已 gitignore）：
+
+```bash
+cp scripts/deploy.env.example scripts/deploy.prod.env   # 新服务器地址/目录/密钥
+./scripts/deploy-all.sh prod                            # 全量部署到 prod 服务器
+./scripts/deploy-backend.sh prod                        # 单组件部署同理
+./scripts/restart-backend.sh prod                       # 仅重启同理
+```
+
+新服务器首次部署前置：安装 JDK 21 / Node 22+ / nginx / unzip，按 [`deploy/nginx.conf.example`](deploy/nginx.conf.example) 配置站点（改 server_name 与 root 路径）；数据库建议独立实例，Flyway 首次启动自动建表，随后前端走 `/setup` 引导创建管理员。密钥（`WIKI_JWT_SECRET` 等）为新服务器重新生成，不要复用其他环境；若开启 eflink 主站登录，需把新域名加入主站回跳白名单。
+
 脚本行为细节：
 
 - 后端/collab 重启只按部署路径与端口精确匹配旧进程，不影响同机其他服务；替换前自动备份 `.bak`，失败可直接回退
@@ -252,26 +265,45 @@ wiki:
 
 LDAP 用户首次登录自动建号；其所在部门组自动同步为用户组，空间管理员可把整组授权进空间。
 
-### eflink 主站关联登录（可选）
+### 外部系统关联登录 connector（可选）
 
-登录页可增加「eflink 账号登录」入口：整页跳转 www.eflink.tech 授权，回跳后由 wiki 后端凭一次性票据到主站服务端兑换身份（简化版 OAuth2 授权码）。与 `auth.mode` 无关，local / ldap 均可叠加启用。
+任意业务系统（eflink 主站、becbas、客户自有系统…）都可按同一协议接入免密登录：用户在对方系统点击入口 → 对方后端为本系统签发**一次性票据**（Redis 存储、60 秒有效、兑换即销毁）→ 浏览器整页跳转 `wiki地址/login?connector=<provider>&ticket=..&state=..` → wiki 后端凭**共享密钥**到对方 `/票据兑换接口` 兑换身份（常量时间比对密钥）。每个接入系统在 `wiki.auth.connectors` 注册表里一段配置即可，与 `auth.mode` 无关，local / ldap 均可叠加启用。
 
 ```yaml
 wiki:
   auth:
-    eflink:
-      enabled: ${WIKI_EFLINK_LOGIN_ENABLED:false}
-      base-url: ${WIKI_EFLINK_BASE_URL:https://eflink.tech}       # 主站对外地址
-      secret: ${WIKI_EFLINK_CONNECTOR_SECRET:}                    # 与主站 connect.wiki-secret 一致的共享密钥
-      redirect-base: ${WIKI_EFLINK_REDIRECT_BASE:https://wiki-demo.eflink.tech}  # 本 wiki 对外 Origin，须在主站回跳白名单内
+    connectors:
+      eflink:   # 易飞办公主站
+        enabled: ${WIKI_EFLINK_LOGIN_ENABLED:false}
+        base-url: ${WIKI_EFLINK_BASE_URL:https://eflink.tech}       # 对方系统对外地址
+        secret: ${WIKI_EFLINK_CONNECTOR_SECRET:}                    # 共享密钥，双方同值
+        redirect-base: ${WIKI_EFLINK_REDIRECT_BASE:https://wiki-demo.eflink.tech}  # 本 wiki 对外 Origin，须在对方回跳白名单内
+        label: 易飞办公账号登录                                       # 登录页按钮文案
+      becbas:   # 例：becbas 系统右上角入口直达
+        enabled: ${WIKI_BECBAS_LOGIN_ENABLED:false}
+        base-url: ${WIKI_BECBAS_BASE_URL:}                          # 对方系统 API 基址（wiki 后端兑换票据回调它）
+        secret: ${WIKI_BECBAS_CONNECTOR_SECRET:}
+        redirect-base: ${WIKI_BECBAS_REDIRECT_BASE:}
+        label: ${WIKI_BECBAS_LABEL:}
+        login-button: ${WIKI_BECBAS_LOGIN_BUTTON:false}             # 对方系统内自带入口时可关掉登录页按钮
+        authorize-path: ${WIKI_BECBAS_AUTHORIZE_PATH:/connect/wiki}               # 对方系统中转页路径
+        exchange-path: ${WIKI_BECBAS_EXCHANGE_PATH:/open/wiki/sso/exchange}       # 对方系统票据兑换接口路径
 ```
+
+对方系统需实现两个接口（`authorize-path` 中转页可选，仅登录页按钮需要；`exchange-path` 必须实现）：
+
+| 接口 | 说明 |
+|---|---|
+| `POST <base-url><authorize-path>` | 中转页：校验对方登录态后签发票据，整页跳回 `{redirect-base}/login?connector=<provider>&ticket=..&state=..` |
+| `POST <base-url><exchange-path>` | 兑换：body `{ticket, secret}`，常量时间比对 secret，`getAndDelete` 原子销毁票据，返回 `{status:0, data:{userId, username, displayName?, email?, state}}` |
 
 规则说明：
 
-- 主站用户首次登录：自动建档为普通用户（role=2），前端会引导其创建个人专属工作空间（私有，仅自己可见）；
+- 外部用户首次登录：自动建档为普通用户（role=2），前端会引导其创建个人专属工作空间（私有，仅自己可见）；
 - 与站内账号撞名且未关联：**禁止自动接管**，登录页弹出授权确认框，输入站内账号密码证明归属后才完成绑定；
-- `user.provider` 记为 `eflink`、`external_id` 存主站用户 ID，成员管理中来源列可识别；
-- 密钥只从环境变量注入（`WIKI_EFLINK_CONNECTOR_SECRET`），不要写进仓库。
+- `user.provider` 记为注册表 key（如 `eflink`、`becbas`）、`external_id` 存对方用户 ID；
+- 密钥只从环境变量注入（如 `WIKI_EFLINK_CONNECTOR_SECRET` / `WIKI_BECBAS_CONNECTOR_SECRET`），不要写进仓库；
+- 兼容保留：旧的 `wiki.auth.eflink.*` 配置仍生效（等价于注册表里的 `eflink` 键）。
 
 ### 其他可选项
 

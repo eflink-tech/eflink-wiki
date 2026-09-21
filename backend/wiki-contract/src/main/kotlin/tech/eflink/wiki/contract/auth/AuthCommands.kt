@@ -41,11 +41,21 @@ class GetCaptchaCommand : CommandObjectBase<CaptchaResult>()
 
 class GetSetupStatusCommand : CommandObjectBase<SetupStatusResult>()
 
-/** 发起 eflink 主站关联登录（生成 state 与中转页地址） */
-class ConnectorStartCommand : CommandObjectBase<ConnectorStartResult>()
+/** 关联登录的账号来源标识（user.provider）；缺省 eflink 兼容旧调用 */
+const val EFLINK_PROVIDER = "eflink"
+
+/** 发起外部系统关联登录（生成 state 与对方系统中转页地址） */
+data class ConnectorStartRequest(val provider: String = EFLINK_PROVIDER)
+
+class ConnectorStartCommand(val request: ConnectorStartRequest = ConnectorStartRequest()) :
+    CommandObjectBase<ConnectorStartResult>()
 
 /** 关联登录票据兑换请求（整页回跳后由前端携带） */
-data class ConnectorLoginRequest(val ticket: String = "", val state: String = "")
+data class ConnectorLoginRequest(
+    val provider: String = EFLINK_PROVIDER,
+    val ticket: String = "",
+    val state: String = ""
+)
 
 class ConnectorLoginCommand(val request: ConnectorLoginRequest) : CommandObjectBase<ConnectorLoginResult>()
 

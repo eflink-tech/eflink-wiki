@@ -7,6 +7,7 @@ import tech.eflink.wiki.contract.auth.InitializeWorkspaceCommand
 import tech.eflink.wiki.contract.auth.AuthResult
 import tech.eflink.wiki.contract.auth.SetupRequest
 import tech.eflink.wiki.contract.auth.SetupStatusResult
+import tech.eflink.wiki.contract.basic.ConnectorInfo
 import tech.eflink.wiki.contract.basic.GetPublicConfigCommand
 import tech.eflink.wiki.contract.basic.PublicConfigResult
 import tech.eflink.wiki.core.communication.CommandHandlerBase
@@ -29,9 +30,20 @@ class GetPublicConfigCommandHandler(private val props: WikiProperties) :
         result.captchaEnabled = props.captchaEnabled
         result.embedBackShow = props.embed.backShow
         result.embedBackHref = props.embed.backHref
-        result.eflinkLoginEnabled = with(props.auth.eflink) {
-            enabled && baseUrl.isNotBlank() && secret.isNotBlank() && redirectBase.isNotBlank()
-        }
+        // 兼容保留：旧前端/旧脚本按布尔开关判断 eflink 入口
+        val eflinkConf = props.auth.connector("eflink")
+        result.eflinkLoginEnabled = eflinkConf != null &&
+            eflinkConf.enabled && eflinkConf.baseUrl.isNotBlank() &&
+            eflinkConf.secret.isNotBlank() && eflinkConf.redirectBase.isNotBlank()
+        // 登录页按钮列表：只返回 loginButton=true 且配置了文案的通道
+        result.connectors = props.auth.enabledConnectors()
+            .filter { it.second.loginButton && it.second.label.isNotBlank() }
+            .map { (provider, conf) ->
+                ConnectorInfo().apply {
+                    this.provider = provider
+                    this.label = conf.label
+                }
+            }
     }
 }
 

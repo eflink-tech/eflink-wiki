@@ -3,14 +3,15 @@ package tech.eflink.wiki.app.impl.auth.handler
 import org.springframework.stereotype.Service
 import tech.eflink.wiki.app.config.WikiProperties
 import tech.eflink.wiki.app.impl.DtoMappers
+import tech.eflink.wiki.app.service.ConnectorClient
 import tech.eflink.wiki.app.service.ConnectorPendingStore
-import tech.eflink.wiki.app.service.EflinkConnectorClient
 import tech.eflink.wiki.app.service.FederationOutcome
 import tech.eflink.wiki.app.service.FederationService
 import tech.eflink.wiki.app.service.JwtService
 import tech.eflink.wiki.app.service.OperationLogService
 import tech.eflink.wiki.app.service.PasswordService
 import tech.eflink.wiki.app.service.RefreshTokenService
+import tech.eflink.wiki.contract.auth.EFLINK_PROVIDER
 import tech.eflink.wiki.contract.auth.ConnectorBindCommand
 import tech.eflink.wiki.contract.auth.ConnectorBindRequest
 import tech.eflink.wiki.contract.auth.ConnectorLoginCommand
@@ -27,13 +28,14 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 
-/** eflink 主站关联登录的账号来源标识（user.provider） */
-const val EFLINK_PROVIDER = "eflink"
+/** 规整 provider 标识：空白回退 eflink（兼容旧调用） */
+private fun normalizeProvider(raw: String?): String =
+    raw?.trim()?.ifBlank { null } ?: EFLINK_PROVIDER
 
-private fun requireEnabled(props: WikiProperties): WikiProperties.Eflink {
-    val conf = props.auth.eflink
-    if (!conf.enabled || conf.baseUrl.isBlank() || conf.secret.isBlank() || conf.redirectBase.isBlank()) {
-        throw ValidateException(406, "eflink 关联登录未启用")
+private fun requireEnabled(props: WikiProperties, provider: String): WikiProperties.Connector {
+    val conf = props.auth.connector(provider)
+    if (conf == null || !conf.enabled || conf.baseUrl.isBlank() || conf.secret.isBlank() || conf.redirectBase.isBlank()) {
+        throw ValidateException(406, "关联登录通道未启用")
     }
     return conf
 }
@@ -56,25 +58,26 @@ private fun issueSession(
     }
 }
 
-/** 发起关联登录：生成防 CSRF state 与主站中转页地址 */
+/** 发起关联登录：生成防 CSRF state 与对方系统中转页地址 */
 @Service
 class ConnectorStartCommandHandler(private val props: WikiProperties) :
     CommandHandlerBase<ConnectorStartCommand, ConnectorStartResult>() {
 
     override fun handle(command: ConnectorStartCommand, result: ConnectorStartResult) {
-        val conf = requireEnabled(props)
+        val provider = normalizeProvider(command.request.provider)
+        val conf = requireEnabled(props, provider)
         val state = UUID.randomUUID().toString().replace("-", "")
         val redirect = URLEncoder.encode(conf.redirectBase.trimEnd('/'), StandardCharsets.UTF_8)
         result.state = state
-        result.authorizeUrl = "${conf.baseUrl.trimEnd('/')}/connect/wiki?state=$state&redirect=$redirect"
+        result.authorizeUrl = "${conf.baseUrl.trimEnd('/')}${conf.authorizePath}?state=$state&redirect=$redirect"
     }
 }
 
-/** 票据登录：兑换主站一次性票据 → 已关联直登 / 撞名转授权绑定 / 建档（created 标记供前端引导建空间） */
+/** 票据登录：兑换对方系统一次性票据 → 已关联直登 / 撞名转授权绑定 / 建档（created 标记供前端引导建空间） */
 @Service
 class ConnectorLoginCommandHandler(
     private val props: WikiProperties,
-    private val client: EflinkConnectorClient,
+    private val client: ConnectorClient,
     private val federationService: FederationService,
     private val userRepository: UserRepository,
     private val pendingStore: ConnectorPendingStore,
@@ -90,33 +93,34 @@ class ConnectorLoginCommandHandler(
     }
 
     override fun handle(command: ConnectorLoginCommand, result: ConnectorLoginResult) {
-        requireEnabled(props)
+        val provider = normalizeProvider(command.request.provider)
+        requireEnabled(props, provider)
         val request = command.request
-        val identity = client.exchange(request.ticket.trim())
-        // 主站票据绑定的 state 必须与本次请求一致，防止票据错位
+        val identity = client.exchange(provider, request.ticket.trim())
+        // 对方系统票据绑定的 state 必须与本次请求一致，防止票据错位
         if (identity.state != request.state.trim()) {
             throw ValidateException(406, "授权校验失败，请重新发起登录")
         }
         val federated = FederatedIdentity(
             externalId = identity.externalId,
             username = identity.username,
-            displayName = identity.username,
+            displayName = identity.displayName ?: identity.username,
             email = identity.email
         )
-        when (val outcome = federationService.resolve(EFLINK_PROVIDER, federated)) {
+        when (val outcome = federationService.resolve(provider, federated)) {
             is FederationOutcome.UsernameConflict -> {
                 if (!federationService.isBindableLocalAccount(outcome.user)) {
                     throw ValidateException(406, "同名账号已关联其他身份，请联系管理员")
                 }
                 result.status = "conflict"
                 result.conflictUsername = outcome.user.username
-                result.bindTicket = pendingStore.put(identity.externalId, identity.username, identity.email)
+                result.bindTicket = pendingStore.put(provider, identity.externalId, identity.username, identity.email)
             }
 
             is FederationOutcome.Resolved -> {
                 result.created = outcome.created
                 issueSession(
-                    outcome.user, "eflink 关联登录", result,
+                    outcome.user, "$provider 关联登录", result,
                     jwtService, refreshTokenService, operationLogService
                 )
             }
@@ -144,10 +148,10 @@ class ConnectorBindCommandHandler(
     }
 
     override fun handle(command: ConnectorBindCommand, result: ConnectorLoginResult) {
-        requireEnabled(props)
         val token = command.request.bindTicket.trim()
         val pending = pendingStore.peek(token)
             ?: throw ValidateException(406, "授权会话已过期，请重新发起关联登录")
+        requireEnabled(props, pending.provider)
         val localUser = userRepository.findByUsername(pending.username)
             ?: throw ValidateException(406, "同名账号已不存在，请重新发起关联登录")
         if (!federationService.isBindableLocalAccount(localUser)) {
@@ -162,10 +166,10 @@ class ConnectorBindCommandHandler(
             )
         }
         pendingStore.remove(token)
-        federationService.linkExternal(localUser.id, EFLINK_PROVIDER, pending.externalId, pending.email)
+        federationService.linkExternal(localUser.id, pending.provider, pending.externalId, pending.email)
         val user = userRepository.findById(localUser.id)!!
         issueSession(
-            user, "eflink 关联登录（授权绑定）", result,
+            user, "${pending.provider} 关联登录（授权绑定）", result,
             jwtService, refreshTokenService, operationLogService
         )
     }

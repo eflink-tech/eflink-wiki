@@ -3,14 +3,21 @@
 # 用途：远程重启 wiki 后端（在本地运行；不构建、不上传）
 #       适用场景：修改远端 wiki.env 配置后重启生效、服务异常后拉起
 #       需要换包发布请用 ./scripts/deploy-backend.sh
-# 用法：./scripts/restart-backend.sh
+# 用法：./scripts/restart-backend.sh [环境名]
+#       环境名对应 scripts/deploy.<环境名>.env（多服务器场景；缺省读取 scripts/deploy.env）
 #
-# 前置：已配置 scripts/deploy.env
+# 前置：已配置对应 env 文件
 #
 set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+
+# 支持多服务器：第一个参数（或环境变量 WIKI_DEPLOY_ENV）指定环境名
+ENV_NAME="${1:-${WIKI_DEPLOY_ENV:-}}"
 ENV_FILE="${SCRIPT_DIR}/deploy.env"
+if [ -n "${ENV_NAME}" ]; then
+  ENV_FILE="${SCRIPT_DIR}/deploy.${ENV_NAME}.env"
+fi
 
 if [ ! -f "${ENV_FILE}" ]; then
   echo "[restart] ERROR: 未找到 ${ENV_FILE}" >&2
