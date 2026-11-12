@@ -37,6 +37,8 @@ import { Attachment, WikiAudio, WikiVideo, WebEmbed } from './MediaBlocks'
 import { PageRef } from './PageRefBlock'
 import { WikiColumn, WikiColumns } from './ColumnsExtension'
 import { createMentionExtension } from './MentionExtension'
+import { FindReplace } from '../../lib/findReplace'
+import { CommentAnchorHighlight } from './commentAnchor'
 import './wiki-editor.css'
 
 /** 编辑器 props */
@@ -133,6 +135,8 @@ export default function WikiEditor({
       WikiColumns,
       WikiColumn,
       mentionExtension,
+      FindReplace,
+      CommentAnchorHighlight,
       // 实时协同：多端同页编辑 + 在线成员光标（传入 collab 会话才启用）
       ...(collab
         ? [

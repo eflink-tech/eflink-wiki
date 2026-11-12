@@ -26,6 +26,7 @@ const HomePage = lazy(() => import('./pages/app/Home'))
 const FavoritesPage = lazy(() => import('./pages/app/Favorites'))
 const SpacePage = lazy(() => import('./pages/app/SpacePage'))
 const PageViewPage = lazy(() => import('./pages/app/PageView'))
+const ShareViewPage = lazy(() => import('./pages/share'))
 const EmbedEditorPage = lazy(() => import('./pages/app/EmbedEditor'))
 const StatsPage = lazy(() => import('./pages/app/StatsPage'))
 const TrashPage = lazy(() => import('./pages/app/TrashPage'))
@@ -110,6 +111,8 @@ const router = createBrowserRouter([
     element: <AppGate />,
     children: [
       { index: true, element: <Navigate to="/app" replace /> },
+      // 公开分享页：无需登录，内容与权限由分享链接配置决定
+      { path: 'share/:token', element: <ShareViewPage /> },
       { path: 'setup', element: <SetupPage /> },
       {
         path: 'login',

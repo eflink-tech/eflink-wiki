@@ -34,6 +34,8 @@ const AUTH_FREE_PATHS = [
   '/auth/logout',
   '/auth/captcha',
   '/setup',
+  // 公开分享页：401 表示该链接要求登录，由页面提示，不触发刷新/跳转
+  '/public/share',
 ]
 
 /** 独立部署时可设 VITE_API_BASE（如 http://wiki-api.example.com/api）；同域 nginx 反代则保持 /api */
@@ -111,12 +113,13 @@ http.interceptors.response.use(
       gotoLogin()
     }
 
-    const msg =
-      (response?.data as Envelope | undefined)?.message ||
-      error.message ||
-      '网络异常，请稍后重试'
+    const body = response?.data as Envelope | undefined
+    const msg = body?.message || error.message || '网络异常，请稍后重试'
     if (!config?._silent) toast.error(msg)
-    return Promise.reject(new ApiError(msg, response?.status ?? 0))
+    // 业务状态码优先（如 404 / 410 / 401 写在信封里，HTTP 层统一为 406 时仍可区分）
+    const code =
+      typeof body?.status === 'number' && body.status > 0 ? body.status : (response?.status ?? 0)
+    return Promise.reject(new ApiError(msg, code))
   },
 )
 

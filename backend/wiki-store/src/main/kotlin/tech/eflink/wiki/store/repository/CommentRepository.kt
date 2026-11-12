@@ -14,6 +14,7 @@ class CommentRepository(private val dsl: DSLContext) {
     fun listByNode(nodeId: Long): List<Map<String, Any?>> =
         dsl.select(
             COMMENT.ID, COMMENT.PARENT_ID, COMMENT.CONTENT, COMMENT.CREATED_AT,
+            COMMENT.ANCHOR_TEXT, COMMENT.ANCHOR_FROM, COMMENT.ANCHOR_TO,
             COMMENT.USER_ID, USER.USERNAME, USER.DISPLAY_NAME, USER.AVATAR
         )
             .from(COMMENT)
@@ -26,6 +27,9 @@ class CommentRepository(private val dsl: DSLContext) {
                     "parentId" to record.getValue(COMMENT.PARENT_ID),
                     "content" to record.getValue(COMMENT.CONTENT),
                     "createdAt" to record.getValue(COMMENT.CREATED_AT),
+                    "anchorText" to record.getValue(COMMENT.ANCHOR_TEXT),
+                    "anchorFrom" to record.getValue(COMMENT.ANCHOR_FROM),
+                    "anchorTo" to record.getValue(COMMENT.ANCHOR_TO),
                     "userId" to record.getValue(COMMENT.USER_ID),
                     "username" to record.getValue(USER.USERNAME),
                     "displayName" to record.getValue(USER.DISPLAY_NAME),
@@ -33,12 +37,23 @@ class CommentRepository(private val dsl: DSLContext) {
                 )
             }
 
-    fun create(nodeId: Long, userId: Long, parentId: Long, content: String): Long =
+    fun create(
+        nodeId: Long,
+        userId: Long,
+        parentId: Long,
+        content: String,
+        anchorText: String? = null,
+        anchorFrom: Int? = null,
+        anchorTo: Int? = null,
+    ): Long =
         dsl.insertInto(COMMENT)
             .set(COMMENT.NODE_ID, nodeId)
             .set(COMMENT.USER_ID, userId)
             .set(COMMENT.PARENT_ID, parentId)
             .set(COMMENT.CONTENT, content)
+            .set(COMMENT.ANCHOR_TEXT, anchorText)
+            .set(COMMENT.ANCHOR_FROM, anchorFrom)
+            .set(COMMENT.ANCHOR_TO, anchorTo)
             .returningResult(COMMENT.ID)
             .fetchOne()!!.value1()
 

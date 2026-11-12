@@ -19,6 +19,7 @@ backend/deploy/keys/
 
 # 日志与临时文件
 *.log
+*.tsbuildinfo
 tmp/
 
 # 部署配置（含服务器地址与密钥，切勿提交；多环境文件如 deploy.prod.env 一并忽略，模板 deploy.env.example 除外）

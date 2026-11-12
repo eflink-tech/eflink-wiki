@@ -161,13 +161,26 @@ export interface CommentItem {
   displayName: string
   avatar: string | null
   createdAt: number | null
+  /** 锚定引用的正文片段（仅一级评论可能非空） */
+  anchorText: string | null
+  anchorFrom: number | null
+  anchorTo: number | null
 }
 
 export const listComments = (nodeId: number) =>
   request<{ list: CommentItem[] }>({ url: `/wiki/nodes/${nodeId}/comments`, method: 'GET' })
 
-export const addComment = (nodeId: number, data: { content: string; parentId?: number; mentionUserIds?: number[] }) =>
-  request<CommentItem>({ url: `/wiki/nodes/${nodeId}/comments`, method: 'POST', data })
+export const addComment = (
+  nodeId: number,
+  data: {
+    content: string
+    parentId?: number
+    mentionUserIds?: number[]
+    anchorText?: string
+    anchorFrom?: number
+    anchorTo?: number
+  },
+) => request<CommentItem>({ url: `/wiki/nodes/${nodeId}/comments`, method: 'POST', data })
 
 export const deleteComment = (commentId: number) =>
   request<null>({ url: `/wiki/comments/${commentId}`, method: 'DELETE' })
@@ -378,3 +391,41 @@ export const listNotifications = (page = 1, size = 20) =>
 
 export const markNotificationsRead = (data: { ids?: number[]; all?: boolean }) =>
   request<null>({ url: '/wiki/notifications/read', method: 'POST', data })
+
+/* ---------- 页面分享链接 ---------- */
+
+export interface ShareConfig {
+  enabled: boolean
+  token: string | null
+  /** 0 任何人可读 / 1 登录用户可读 / 2 仅空间成员 */
+  access: number
+  expiresAt: number | null
+  createdAt: number | null
+}
+
+export interface SharedPage {
+  nodeId: number
+  spaceId: number
+  title: string
+  content: string | null
+  versionNo: number | null
+  publishedAt: number | null
+  publishedByName: string | null
+  spaceName: string | null
+  ownerName: string | null
+  access: number
+  expiresAt: number | null
+}
+
+export const getShareConfig = (nodeId: number) =>
+  request<ShareConfig>({ url: `/wiki/share/${nodeId}`, method: 'GET' })
+
+export const saveShareConfig = (nodeId: number, data: { access: number; expiresInDays?: number | null }) =>
+  request<ShareConfig>({ url: `/wiki/share/${nodeId}`, method: 'PUT', data })
+
+export const revokeShareConfig = (nodeId: number) =>
+  request<null>({ url: `/wiki/share/${nodeId}`, method: 'DELETE' })
+
+/** 公开分享页内容：access>=1 时依赖请求头里的登录态，401 由页面自行提示 */
+export const getSharedPage = (token: string) =>
+  request<SharedPage>({ url: `/public/share/${encodeURIComponent(token)}`, method: 'GET', _silent: true })

@@ -8,7 +8,7 @@
  * - 进入页面并发拉取 getPage（已发布）与 getDraft（我的草稿）
  * - 有草稿：细条警示提示（继续编辑 / 查看已发布 / 放弃修改）
  * - 阅读态：元信息 + 只读渲染；操作：编辑（需空间角色≥2）、版本历史、收藏、另存为模板、
- *   演示（?present=1 全屏大屏）、导出（Markdown / Word / PDF 文件下载）
+ *   演示（?present=1 全屏大屏）、导出（Markdown / OOXML .docx / 打印-文本 PDF / 图片 PDF）
  * - presence 软锁：他人正在编辑本页时阅读态显示提示条，进入编辑态前弹确认
  * - 编辑态：草稿??已发布 载入编辑器；标题可直接改（失焦/回车写节点并刷新树）；
  *   2s 防抖自动保存草稿；Ctrl/Cmd+S 立即保存；
@@ -30,9 +30,13 @@ import {
   LogOut,
   Maximize,
   Maximize2,
+  MessageSquare,
   Minimize2,
   Pencil,
+  Printer,
   RotateCcw,
+  Search,
+  Share2,
   Star,
   TriangleAlert,
   Upload,
@@ -53,13 +57,14 @@ import type { VersionItem } from '../../api/wiki'
 import { request } from '../../api/client'
 import { Button } from '../../components/Button'
 import CommentPanel from '../../components/wiki/CommentPanel'
+import ShareDialog from '../../components/wiki/ShareDialog'
 import { ConfirmDialog, Dialog, DialogError } from '../../components/Dialog'
 import { Dropdown, DropdownItem } from '../../components/Dropdown'
 import { Input, Textarea } from '../../components/Input'
 import { Spinner } from '../../components/Loading'
 import { toast } from '../../components/Toast'
 import WikiEditor from '../../components/editor/WikiEditor'
-import { formatFileSize } from '../../components/editor/MediaBlocks'
+import FindReplacePanel from '../../components/editor/FindReplacePanel'
 import { TocPanel } from '../../components/editor/PageFloatingTools'
 import EmbedPreviewModal from '../../components/editor/EmbedPreviewModal'
 import {
@@ -68,10 +73,14 @@ import {
 } from '../../components/editor/EmbedPreview'
 import { useEditorPrefsStore } from '../../store/editorPrefsStore'
 import { diffContents, type DiffRow } from '../../components/editor/diff'
-import { jsonToMarkdown, markdownToJson, type PMNode } from '../../lib/markdown'
+import { jsonToMarkdown, markdownToJson } from '../../lib/markdown'
+import { docxToHtml, DOCX_IMPORT_MAX_BYTES, isDocxFile } from '../../lib/docxImport'
 import { preparePageTitle } from '../../lib/pageTitle'
 import { emitTreeChanged } from '../../lib/events'
 import { captureElementPdf, sanitizePdfBasename } from '../../lib/pagePdf'
+import { buildDocxBlob } from '../../lib/docxExport'
+import { printElement, DEFAULT_PRINT_OPTIONS, PRINT_MARGIN_CHOICES, type PrintOptions } from '../../lib/printPage'
+import { flashCommentAnchor } from '../../components/editor/commentAnchor'
 import { applyPublishedSnapshot } from '../../lib/publishSnapshot'
 import { cn } from '../../lib/utils'
 
@@ -114,125 +123,6 @@ function downloadBlob(blob: Blob, filename: string): void {
   a.click()
   a.remove()
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
-
-/** HTML 特殊字符转义 */
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-/** 行内内容 → HTML（hardBreak → <br>，image → <img>，文本转义） */
-function inlineHtml(node: PMNode): string {
-  const parts: string[] = []
-  for (const child of node.content ?? []) {
-    const t = child.type.toLowerCase().replace(/_/g, '')
-    if (t === 'hardbreak') {
-      parts.push('<br />')
-    } else if (t === 'image') {
-      parts.push(
-        `<img src="${escapeHtml(String(child.attrs?.src ?? ''))}" alt="${escapeHtml(String(child.attrs?.alt ?? ''))}" />`,
-      )
-    } else if (t === 'text') {
-      parts.push(escapeHtml(child.text ?? ''))
-    } else {
-      parts.push(inlineHtml(child))
-    }
-  }
-  return parts.join('')
-}
-
-/** 单个块级节点 → HTML（覆盖 P1 编辑器块集合，供 Word 导出使用） */
-function blockHtml(node: PMNode): string {
-  const t = node.type.toLowerCase().replace(/_/g, '')
-  const attrs = node.attrs ?? {}
-  switch (t) {
-    case 'heading': {
-      const level = Math.min(6, Math.max(1, Number(attrs.level ?? 1) || 1))
-      return `<h${level}>${inlineHtml(node)}</h${level}>`
-    }
-    case 'paragraph':
-      return `<p>${inlineHtml(node)}</p>`
-    case 'bulletlist':
-      return `<ul>${(node.content ?? []).map(blockHtml).join('')}</ul>`
-    case 'orderedlist': {
-      const start = Number(attrs.start ?? 1) || 1
-      return `<ol start="${start}">${(node.content ?? []).map(blockHtml).join('')}</ol>`
-    }
-    case 'tasklist':
-      return `<ul>${(node.content ?? []).map(blockHtml).join('')}</ul>`
-    case 'listitem':
-    case 'taskitem': {
-      const checked = attrs.checked === true
-      const inner = (node.content ?? []).map(blockHtml).join('')
-      return `<li>${t === 'taskitem' ? (checked ? '☑ ' : '☐ ') : ''}${inner}</li>`
-    }
-    case 'blockquote':
-      return `<blockquote>${(node.content ?? []).map(blockHtml).join('')}</blockquote>`
-    case 'codeblock': {
-      const code = (node.content ?? []).map((c) => c.text ?? '').join('')
-      return `<pre style="background:#f4f4f4;padding:12px;border-radius:6px;overflow-x:auto;"><code>${escapeHtml(code)}</code></pre>`
-    }
-    case 'horizontalrule':
-      return '<hr />'
-    case 'image':
-      return `<p><img src="${escapeHtml(String(attrs.src ?? ''))}" alt="${escapeHtml(String(attrs.alt ?? ''))}" /></p>`
-    case 'table':
-      return `<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;">${(node.content ?? []).map(blockHtml).join('')}</table>`
-    case 'tablerow':
-      return `<tr>${(node.content ?? []).map(blockHtml).join('')}</tr>`
-    case 'tableheader':
-      return `<th style="background:#f0f0f0;">${inlineHtml(node)}</th>`
-    case 'tablecell':
-      return `<td>${inlineHtml(node)}</td>`
-    case 'embedcard': {
-      const title = String(attrs.title ?? '')
-      const type = String(attrs.type ?? attrs.embedType ?? '')
-      return `<p>【嵌入】${escapeHtml(title)}（${escapeHtml(type)}）</p>`
-    }
-    case 'attachment': {
-      const name = String(attrs.name ?? '')
-      const url = String(attrs.url ?? '')
-      const size = formatFileSize(Number(attrs.size) || 0)
-      return `<p>【附件】<a href="${escapeHtml(url)}">${escapeHtml(name)}</a>${size ? `（${escapeHtml(size)}）` : ''}</p>`
-    }
-    case 'wikivideo':
-    case 'video':
-      return `<p>【视频】<a href="${escapeHtml(String(attrs.src ?? ''))}">点击播放</a></p>`
-    case 'wikiaudio':
-    case 'audio':
-      return `<p>【音频】<a href="${escapeHtml(String(attrs.src ?? ''))}">点击播放</a></p>`
-    case 'webembed':
-      return `<p>【网页】<a href="${escapeHtml(String(attrs.src ?? ''))}">${escapeHtml(String(attrs.src ?? ''))}</a></p>`
-    case 'pageref':
-      return `<p>【子页面】${escapeHtml(String(attrs.title ?? ''))}</p>`
-    case 'columns': {
-      // Word 导出不支持多栏，各栏内容顺序平铺
-      return (node.content ?? []).map(blockHtml).join('')
-    }
-    case 'column':
-      return (node.content ?? []).map(blockHtml).join('')
-    default:
-      // 未知块级节点：尽力递归渲染其子块
-      return (node.content ?? []).map(blockHtml).join('')
-  }
-}
-
-/** ProseMirror JSON 字符串 → 简易 HTML；解析失败按纯文本段落降级 */
-function jsonToHtml(doc: string): string {
-  if (!doc) return ''
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(doc)
-  } catch {
-    return `<p>${escapeHtml(doc)}</p>`
-  }
-  const root = parsed as PMNode | null
-  if (!root || typeof root !== 'object' || !Array.isArray(root.content)) return ''
-  return root.content.map(blockHtml).join('\n')
 }
 
 /** 演示态大屏样式：放大正文排版（覆盖 wiki-editor.css 的默认字号） */
@@ -592,6 +482,81 @@ export default function PageViewPage() {
   const [tplSaving, setTplSaving] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
+  const [exportingWord, setExportingWord] = useState(false)
+  // 打印设置（纸张 / 方向 / 页边距 / 页眉页脚 / 页码）
+  const [printOpen, setPrintOpen] = useState(false)
+  const [printOptions, setPrintOptions] = useState<PrintOptions>(DEFAULT_PRINT_OPTIONS)
+  // 分享链接设置
+  const [shareOpen, setShareOpen] = useState(false)
+  // 正文选区评论：阅读态编辑器实例 + 浮动「评论」按钮 + 锚定草稿
+  const [readEditor, setReadEditor] = useState<Editor | null>(null)
+  const [selBubble, setSelBubble] = useState<{ from: number; to: number; text: string; top: number; left: number } | null>(null)
+  const [anchorDraft, setAnchorDraft] = useState<{ from: number; to: number; text: string } | null>(null)
+  const [anchorContent, setAnchorContent] = useState('')
+  const [anchorSubmitting, setAnchorSubmitting] = useState(false)
+  const [commentRefresh, setCommentRefresh] = useState(0)
+
+  // 阅读态选中正文文字后浮出「评论」按钮（仅一级评论使用锚点）
+  useEffect(() => {
+    if (!readEditor || readEditor.isDestroyed) return
+    const update = () => {
+      const { from, to, empty } = readEditor.state.selection
+      if (empty) {
+        setSelBubble(null)
+        return
+      }
+      const text = readEditor.state.doc.textBetween(from, to, ' ').trim()
+      const domSel = window.getSelection()
+      if (!text || !domSel || domSel.rangeCount === 0) {
+        setSelBubble(null)
+        return
+      }
+      const rect = domSel.getRangeAt(0).getBoundingClientRect()
+      if (rect.width === 0 && rect.height === 0) {
+        setSelBubble(null)
+        return
+      }
+      setSelBubble({
+        from,
+        to,
+        text: text.slice(0, 300),
+        top: Math.max(8, rect.top - 40),
+        left: rect.left + rect.width / 2,
+      })
+    }
+    readEditor.on('selectionUpdate', update)
+    return () => {
+      readEditor.off('selectionUpdate', update)
+    }
+  }, [readEditor])
+
+  /** 发表锚定评论（引用当前选区文本与位置） */
+  const submitAnchorComment = async () => {
+    if (!anchorDraft) return
+    const v = anchorContent.trim()
+    if (!v) {
+      toast.error('请输入评论内容')
+      return
+    }
+    setAnchorSubmitting(true)
+    try {
+      await wikiApi.addComment(nodeId, {
+        content: v,
+        anchorText: anchorDraft.text,
+        anchorFrom: anchorDraft.from,
+        anchorTo: anchorDraft.to,
+      })
+      setAnchorDraft(null)
+      setAnchorContent('')
+      setSelBubble(null)
+      setCommentRefresh((k) => k + 1)
+      toast.success('评论已发表')
+    } catch {
+      // 拦截器已提示
+    } finally {
+      setAnchorSubmitting(false)
+    }
+  }
 
   // 演示模式：与 URL query present=1 双向同步（AppLayout 据此隐藏侧栏/顶栏）
   const [searchParams, setSearchParams] = useSearchParams()
@@ -650,6 +615,7 @@ export default function PageViewPage() {
   // 导入弹窗（编辑态）：粘贴 Markdown / HTML 插入光标处
   const [importOpen, setImportOpen] = useState(false)
   const [importText, setImportText] = useState('')
+  const [importFile, setImportFile] = useState<File | null>(null)
   const [importError, setImportError] = useState('')
   const [importing, setImporting] = useState(false)
   // 编辑器实例（导入时调用 insertContent）
@@ -663,6 +629,8 @@ export default function PageViewPage() {
   }, [])
   // 右上角浮动大纲卡片开关（阅读/编辑态共用，浮动目录按钮切换）
   const [tocOpen, setTocOpen] = useState(false)
+  // 编辑态查找替换面板
+  const [findOpen, setFindOpen] = useState(false)
 
   // 我在当前空间的角色（1 管理员 2 编辑者 3 查看者；null = 未知，按可编辑展示，后端兜底）
   const [myRole, setMyRole] = useState<number | null>(null)
@@ -692,6 +660,25 @@ export default function PageViewPage() {
 
   // 可编辑：空间管理员(1)/编辑者(2)；未知(null)时先展示入口，由后端兜底；非成员(0)/查看者(3)不可编辑
   const canEdit = myRole === null || myRole === 1 || myRole === 2
+  /** 系统管理员可管理分享设置（后端对管理员放行空间角色校验） */
+  const isAdmin = useAuthStore((s) => s.user?.role === 1)
+
+  // Ctrl/Cmd+F / Ctrl/Cmd+H：编辑态打开查找替换
+  useEffect(() => {
+    if (mode !== 'edit' || !activeEditor) return
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'h')) {
+        e.preventDefault()
+        setFindOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mode, activeEditor])
+
+  useEffect(() => {
+    if (mode !== 'edit') setFindOpen(false)
+  }, [mode])
 
   /* ── 数据加载：页面 + 草稿 并发 ── */
   useEffect(() => {
@@ -1106,20 +1093,20 @@ export default function PageViewPage() {
     toast.success('已导出 Markdown')
   }
 
-  /** 导出 Word：标题 + 正文 JSON 转 HTML，以 Word MIME 打包为 .doc 下载 */
-  const exportWord = () => {
-    if (!page) return
+  /** 导出 Word：ProseMirror JSON 转真 OOXML .docx 下载 */
+  const exportWord = async () => {
+    if (!page || exportingWord) return
     const title = page.title || '未命名页面'
-    const html =
-      '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
-      `<head><meta charset="utf-8" /><title>${escapeHtml(title)}</title></head>` +
-      `<body><h1>${escapeHtml(title)}</h1>${jsonToHtml(page.content ?? '')}</body></html>`
-    // 加 BOM 便于 Word 正确识别 UTF-8
-    downloadBlob(
-      new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' }),
-      `${title}.doc`,
-    )
-    toast.success('已导出 Word')
+    setExportingWord(true)
+    try {
+      const blob = await buildDocxBlob(page.content ?? '', title)
+      downloadBlob(blob, `${sanitizePdfBasename(title)}.docx`)
+      toast.success('已导出 Word')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '导出 Word 失败')
+    } finally {
+      setExportingWord(false)
+    }
   }
 
   /** 导出 PDF：截取正文区域生成 A4 文件并下载（不再打开系统打印） */
@@ -1143,6 +1130,17 @@ export default function PageViewPage() {
       exportingPdfRef.current = false
       setExportingPdf(false)
     }
+  }
+
+  /** 打印 / 另存为 PDF：独立打印窗口，文字可选、浏览器真实分页 */
+  const printPage = (options: PrintOptions = printOptions) => {
+    const el = document.querySelector('.page-pdf-root')
+    if (!(el instanceof HTMLElement)) {
+      toast.error('找不到可打印的页面内容')
+      return
+    }
+    const ok = printElement(el, page?.title || '未命名页面', options)
+    if (!ok) toast.error('打印窗口被浏览器拦截，请允许本站弹出窗口')
   }
 
   const toggleFavorite = async () => {
@@ -1195,29 +1193,32 @@ export default function PageViewPage() {
     setActiveEditor(editor)
   }, [])
 
-  /** 导入提交：以 < 开头按 HTML 处理，否则按 Markdown 处理，统一插入光标处 */
+  /** 导入提交：.docx 走 mammoth；粘贴内容以 < 开头按 HTML、否则按 Markdown，统一插入光标处 */
   const submitImport = async () => {
-    const text = importText.trim()
-    if (!text) {
-      setImportError('请粘贴要导入的内容')
-      return
-    }
     const editor = editorRef.current
     if (!editor) {
       setImportError('编辑器尚未就绪，请稍后重试')
       return
     }
+    const text = importText.trim()
+    if (!importFile && !text) {
+      setImportError('请选择 .docx 文件或粘贴要导入的内容')
+      return
+    }
     setImporting(true)
     setImportError('')
     try {
-      if (text.startsWith('<')) {
+      if (importFile) {
+        const html = await docxToHtml(importFile)
+        editor.commands.insertContent(html)
+      } else if (text.startsWith('<')) {
         // HTML：直接交给 Tiptap 解析并插入
         editor.commands.insertContent(text)
       } else {
         // Markdown：先转 ProseMirror JSON 再插入
         editor.commands.insertContent(JSON.parse(markdownToJson(text)) as JSONContent)
       }
-      toast.success('内容已插入到光标处')
+      toast.success(importFile ? 'Word 内容已插入到光标处' : '内容已插入到光标处')
       setImportOpen(false)
     } catch (err) {
       setImportError(err instanceof Error ? err.message : '导入失败，请检查内容格式')
@@ -1260,7 +1261,7 @@ export default function PageViewPage() {
           <Minimize2 size={15} />
           退出演示
         </button>
-        <div className="present-body mx-auto max-w-[1080px] px-10 py-16">
+        <div className="present-body mx-auto max-w-[1080px] px-4 py-10 sm:px-10 sm:py-16">
           <h1 className="mb-10 text-4xl font-bold leading-tight text-ink-1">{page.title}</h1>
           {page.content ? (
             <WikiEditor key={`present-${reload}`} initialContent={page.content} editable={false} />
@@ -1285,8 +1286,8 @@ export default function PageViewPage() {
         {/* 编辑态全幅白画布（方案 §2.4）：子栏 + 与阅读页同宽同轴的编辑器 */}
         <div className="flex h-full min-h-full flex-col bg-surface">
           {/* 子栏：标题 + 状态 chip 跟随（修复被浮动按钮遮挡的缺陷）+ 草稿基线 + 目录/宽窄 */}
-          <div className="no-print flex h-12 shrink-0 items-center gap-2.5 border-b border-line px-4">
-            <span className="min-w-0 max-w-[40%] truncate text-base font-semibold text-ink-1">
+          <div className="no-print flex h-12 shrink-0 items-center gap-2 border-b border-line px-3 sm:gap-2.5 sm:px-4">
+            <span className="min-w-0 max-w-[52%] truncate text-base font-semibold text-ink-1 sm:max-w-[40%]">
               {editTitle || '未命名页面'}
             </span>
             <span
@@ -1305,7 +1306,7 @@ export default function PageViewPage() {
             </span>
             <span className="flex-1" />
             {(draft?.currentVersionNo ?? 0) > 0 && (
-              <span className="shrink-0 text-meta text-ink-3">
+              <span className="hidden shrink-0 text-meta text-ink-3 sm:inline">
                 草稿基于 v{draft?.currentVersionNo}
               </span>
             )}
@@ -1316,6 +1317,14 @@ export default function PageViewPage() {
               onClick={() => setTocOpen((o) => !o)}
             >
               <ListTree size={16} />
+            </button>
+            <button
+              type="button"
+              title="查找替换 (Ctrl/Cmd+F)"
+              className={cn(iconBtnCls, findOpen && iconBtnActiveCls)}
+              onClick={() => setFindOpen((o) => !o)}
+            >
+              <Search size={16} />
             </button>
             <button
               type="button"
@@ -1331,7 +1340,7 @@ export default function PageViewPage() {
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div
               className={cn(
-                'mx-auto w-full min-w-0 px-12 pb-[200px] pt-9',
+                'mx-auto w-full min-w-0 px-4 pb-[200px] pt-6 sm:px-12 sm:pt-9',
                 wide ? 'max-w-none' : 'max-w-[928px]',
               )}
             >
@@ -1396,6 +1405,7 @@ export default function PageViewPage() {
                 size="sm"
                 onClick={() => {
                   setImportText('')
+                  setImportFile(null)
                   setImportError('')
                   setImportOpen(true)
                 }}
@@ -1418,12 +1428,17 @@ export default function PageViewPage() {
         {tocOpen && (
           <TocPanel editor={activeEditor} contentJson={editInitial} onCollapse={() => setTocOpen(false)} />
         )}
+        <FindReplacePanel
+          editor={activeEditor}
+          open={findOpen}
+          onClose={() => setFindOpen(false)}
+        />
 
-        {/* 导入内容弹窗：粘贴 Markdown / HTML，自动识别后插入光标处 */}
+        {/* 导入内容弹窗：上传 .docx 或粘贴 Markdown / HTML，插入光标处 */}
         <Dialog
           open={importOpen}
           title="导入内容"
-          width={480}
+          width={520}
           onClose={() => setImportOpen(false)}
           footer={
             <>
@@ -1435,11 +1450,53 @@ export default function PageViewPage() {
           }
         >
           <DialogError message={importError} />
+          <div className="mb-3 rounded-ctrl border border-dashed border-line px-3 py-3">
+            <label className="flex cursor-pointer items-center justify-between gap-3">
+              <span className="min-w-0">
+                <span className="block text-sm text-ink-1">上传 Word 文档</span>
+                <span className="mt-0.5 block text-xs text-ink-3">
+                  支持 .docx，最大 {Math.round(DOCX_IMPORT_MAX_BYTES / 1024 / 1024)}MB；页眉页脚、分栏等版式不保留
+                </span>
+              </span>
+              <span className="shrink-0 rounded-ctrl border border-line px-2.5 py-1 text-xs text-ink-2 hover:bg-sunken">
+                选择文件
+              </span>
+              <input
+                type="file"
+                accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null
+                  if (f && !isDocxFile(f)) {
+                    setImportError('仅支持 .docx 文件（旧版 .doc 请先另存为 .docx）')
+                    setImportFile(null)
+                  } else {
+                    setImportError('')
+                    setImportFile(f)
+                  }
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            {importFile && (
+              <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                <span className="min-w-0 truncate text-ink-2">{importFile.name}</span>
+                <button
+                  type="button"
+                  className="shrink-0 text-ink-3 hover:text-danger"
+                  onClick={() => setImportFile(null)}
+                >
+                  移除
+                </button>
+              </div>
+            )}
+          </div>
           <Textarea
             rows={8}
-            label="内容"
+            label="或粘贴内容"
             placeholder="粘贴 Markdown 或 HTML 内容…"
             value={importText}
+            disabled={importFile !== null}
             onChange={(e) => setImportText(e.target.value)}
           />
           <label className="flex items-center gap-1.5 text-xs text-ink-3">
@@ -1462,8 +1519,8 @@ export default function PageViewPage() {
     <div className="relative min-h-full bg-surface">
       <div
         className={cn(
-          'page-print-area mx-auto w-full min-w-0 pb-12 pt-8',
-          wide ? 'max-w-none px-12' : 'max-w-[880px] px-6',
+          'page-print-area mx-auto w-full min-w-0 pb-12 pt-6 sm:pt-8',
+          wide ? 'max-w-none px-4 sm:px-12' : 'max-w-[880px] px-4 sm:px-6',
         )}
       >
       {/* 标题与操作 */}
@@ -1516,7 +1573,7 @@ export default function PageViewPage() {
       </div>
 
       {/* 二级工具条：导出 / 演示 / 版本历史 / 另存为模板 + 右侧目录 / 宽窄 / 全屏 */}
-      <div className="no-print mt-4 flex items-center gap-0.5 border-b border-line py-1">
+      <div className="no-print mt-4 flex flex-wrap items-center gap-0.5 gap-y-1 border-b border-line py-1">
         <Dropdown
           align="left"
           trigger={
@@ -1530,11 +1587,14 @@ export default function PageViewPage() {
           <DropdownItem icon={<FileText size={14} />} onClick={exportMarkdown}>
             导出 Markdown
           </DropdownItem>
-          <DropdownItem icon={<FileDown size={14} />} onClick={exportWord}>
-            导出 Word
+          <DropdownItem icon={<FileDown size={14} />} onClick={() => void exportWord()}>
+            {exportingWord ? '正在导出…' : '导出 Word (.docx)'}
+          </DropdownItem>
+          <DropdownItem icon={<Printer size={14} />} onClick={() => setPrintOpen(true)}>
+            打印 / 导出 PDF…
           </DropdownItem>
           <DropdownItem icon={<FileDown size={14} />} onClick={() => void exportPdf()} disabled={exportingPdf}>
-            {exportingPdf ? '正在导出…' : '导出 PDF'}
+            {exportingPdf ? '正在导出…' : '导出 PDF（图片）'}
           </DropdownItem>
         </Dropdown>
         <button type="button" className={toolBtnCls} onClick={enterPresent}>
@@ -1544,6 +1604,10 @@ export default function PageViewPage() {
         <button type="button" className={toolBtnCls} onClick={() => setDrawerOpen(true)}>
           <History size={15} />
           版本历史
+        </button>
+        <button type="button" className={toolBtnCls} onClick={() => setShareOpen(true)}>
+          <Share2 size={15} />
+          分享链接
         </button>
         <button
           type="button"
@@ -1623,7 +1687,12 @@ export default function PageViewPage() {
       {/* 正文 */}
       <div className="mt-6">
         {page.content ? (
-          <WikiEditor key={`read-${reload}`} initialContent={page.content} editable={false} />
+          <WikiEditor
+            key={`read-${reload}`}
+            initialContent={page.content}
+            editable={false}
+            onReady={setReadEditor}
+          />
         ) : (
           <div className="flex flex-col items-center gap-2 rounded-card border border-dashed border-line bg-sunken/60 px-6 py-12 text-ink-3">
             <p className="text-sm">暂无已发布内容</p>
@@ -1635,11 +1704,87 @@ export default function PageViewPage() {
 
       {/* 评论区（演示/打印时不显示） */}
       <div className="no-print">
-        <CommentPanel nodeId={nodeId} spaceId={spaceId} />
+        <CommentPanel
+          nodeId={nodeId}
+          spaceId={spaceId}
+          refreshKey={commentRefresh}
+          onJumpAnchor={(c) => {
+            if (readEditor && c.anchorFrom != null && c.anchorTo != null) {
+              flashCommentAnchor(readEditor, c.anchorFrom, c.anchorTo, c.anchorText)
+            }
+          }}
+        />
       </div>
+
+      {/* 选区浮动按钮：选中正文后出现 */}
+      {selBubble && !presentMode && (
+        <button
+          type="button"
+          className="no-print fixed z-40 flex -translate-x-1/2 items-center gap-1 rounded-full bg-ink-1 px-3 py-1.5 text-xs font-medium text-white shadow-3 transition-colors hover:bg-ink-1/90"
+          style={{ top: selBubble.top, left: selBubble.left }}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            setAnchorDraft({ from: selBubble.from, to: selBubble.to, text: selBubble.text })
+            setAnchorContent('')
+            setSelBubble(null)
+          }}
+        >
+          <MessageSquare size={13} /> 评论
+        </button>
+      )}
+
+      {/* 锚定评论输入框 */}
+      <Dialog
+        open={anchorDraft !== null}
+        title="添加评论"
+        width={460}
+        onClose={() => setAnchorDraft(null)}
+        footer={
+          <>
+            <Button variant="default" onClick={() => setAnchorDraft(null)}>
+              取消
+            </Button>
+            <Button
+              variant="primary"
+              loading={anchorSubmitting}
+              disabled={!anchorContent.trim()}
+              onClick={() => void submitAnchorComment()}
+            >
+              发表评论
+            </Button>
+          </>
+        }
+      >
+        {anchorDraft && (
+          <div className="space-y-3">
+            <div className="max-h-24 overflow-y-auto rounded-ctrl border-l-2 border-brand/60 bg-sunken px-3 py-2 text-sm text-ink-2">
+              {anchorDraft.text}
+            </div>
+            <Textarea
+              rows={3}
+              autoFocus
+              placeholder="针对选中内容写下评论…"
+              value={anchorContent}
+              onChange={(e) => setAnchorContent(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') void submitAnchorComment()
+              }}
+            />
+            <p className="text-xs text-ink-3">Ctrl / Cmd + Enter 发送；评论会显示在页面下方评论区。</p>
+          </div>
+        )}
+      </Dialog>
 
       {/* 嵌入块预览弹窗（阅读态；NodeView 经 CustomEvent 请求打开） */}
       <EmbedPreviewModal info={embedPreview} onClose={closeEmbedPreview} />
+
+      {/* 分享链接设置 */}
+      <ShareDialog
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        nodeId={nodeId}
+        canEdit={canEdit || isAdmin}
+      />
 
       {/* 版本历史抽屉 */}
       <VersionDrawer
@@ -1649,6 +1794,140 @@ export default function PageViewPage() {
         currentContent={page.content}
         onRestore={(no) => void handleRestored(no)}
       />
+
+      {/* 打印设置：纸张 / 方向 / 页边距 / 页眉页脚 / 页码 */}
+      <Dialog
+        open={printOpen}
+        title="打印 / 导出 PDF"
+        width={480}
+        onClose={() => setPrintOpen(false)}
+        footer={
+          <>
+            <Button onClick={() => setPrintOpen(false)}>取消</Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setPrintOpen(false)
+                // 等待弹窗关闭后再开打印窗口，避免弹窗拦截
+                window.setTimeout(() => printPage(), 0)
+              }}
+            >
+              <Printer size={14} /> 开始打印
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-ink-2">纸张</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(['A4', 'A3', 'Letter'] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={cn(
+                    'rounded-ctrl border px-3 py-1 text-xs transition-colors',
+                    printOptions.paper === p
+                      ? 'border-brand bg-brand-light font-medium text-brand'
+                      : 'border-line text-ink-2 hover:bg-sunken',
+                  )}
+                  onClick={() => setPrintOptions((o) => ({ ...o, paper: p }))}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-ink-2">方向</p>
+            <div className="flex gap-1.5">
+              {(
+                [
+                  ['portrait', '纵向'],
+                  ['landscape', '横向'],
+                ] as const
+              ).map(([v, label]) => (
+                <button
+                  key={v}
+                  type="button"
+                  className={cn(
+                    'rounded-ctrl border px-3 py-1 text-xs transition-colors',
+                    printOptions.orientation === v
+                      ? 'border-brand bg-brand-light font-medium text-brand'
+                      : 'border-line text-ink-2 hover:bg-sunken',
+                  )}
+                  onClick={() => setPrintOptions((o) => ({ ...o, orientation: v }))}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-ink-2">页边距</p>
+            <div className="flex flex-wrap gap-1.5">
+              {PRINT_MARGIN_CHOICES.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  className={cn(
+                    'rounded-ctrl border px-3 py-1 text-xs transition-colors',
+                    printOptions.marginMm === m
+                      ? 'border-brand bg-brand-light font-medium text-brand'
+                      : 'border-line text-ink-2 hover:bg-sunken',
+                  )}
+                  onClick={() => setPrintOptions((o) => ({ ...o, marginMm: m }))}
+                >
+                  {m} mm
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2 border-t border-line pt-3">
+            <label className="flex items-center gap-2 text-sm text-ink-2">
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 accent-[var(--color-brand)]"
+                checked={printOptions.header}
+                onChange={(e) => setPrintOptions((o) => ({ ...o, header: e.target.checked }))}
+              />
+              页眉（页面标题 + 打印日期）
+            </label>
+            <label className="flex items-center gap-2 text-sm text-ink-2">
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 accent-[var(--color-brand)]"
+                checked={printOptions.pageNumbers}
+                onChange={(e) => setPrintOptions((o) => ({ ...o, pageNumbers: e.target.checked }))}
+              />
+              页脚页码（第 x 页 / 共 y 页）
+            </label>
+            <label className="flex items-center gap-2 text-sm text-ink-2">
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 accent-[var(--color-brand)]"
+                checked={printOptions.footer}
+                onChange={(e) => setPrintOptions((o) => ({ ...o, footer: e.target.checked }))}
+              />
+              页脚文字
+            </label>
+            {printOptions.footer && (
+              <Input
+                value={printOptions.footerText}
+                placeholder="页脚文字，如：易飞知识库"
+                onChange={(e) => setPrintOptions((o) => ({ ...o, footerText: e.target.value }))}
+              />
+            )}
+          </div>
+
+          <p className="text-xs text-ink-3">
+            在打印对话框中选择「另存为 PDF」即可得到文字可选、真实分页的 PDF。页眉页脚与页码需要 Chromium 内核浏览器。
+          </p>
+        </div>
+      </Dialog>
 
       {/* 另存为模板弹窗 */}
       <Dialog

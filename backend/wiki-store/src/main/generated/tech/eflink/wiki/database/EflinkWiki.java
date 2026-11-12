@@ -31,6 +31,7 @@ import tech.eflink.wiki.database.tables.WikiFavorite;
 import tech.eflink.wiki.database.tables.WikiMember;
 import tech.eflink.wiki.database.tables.WikiNode;
 import tech.eflink.wiki.database.tables.WikiRecentOpen;
+import tech.eflink.wiki.database.tables.WikiShareLink;
 import tech.eflink.wiki.database.tables.WikiSpace;
 import tech.eflink.wiki.database.tables.WikiSpaceGroup;
 import tech.eflink.wiki.database.tables.WikiTemplate;
@@ -151,6 +152,11 @@ public class EflinkWiki extends SchemaImpl {
     public final WikiRecentOpen WIKI_RECENT_OPEN = WikiRecentOpen.WIKI_RECENT_OPEN;
 
     /**
+     * 页面分享链接
+     */
+    public final WikiShareLink WIKI_SHARE_LINK = WikiShareLink.WIKI_SHARE_LINK;
+
+    /**
      * 知识库空间
      */
     public final WikiSpace WIKI_SPACE = WikiSpace.WIKI_SPACE;
@@ -206,6 +212,7 @@ public class EflinkWiki extends SchemaImpl {
             WikiMember.WIKI_MEMBER,
             WikiNode.WIKI_NODE,
             WikiRecentOpen.WIKI_RECENT_OPEN,
+            WikiShareLink.WIKI_SHARE_LINK,
             WikiSpace.WIKI_SPACE,
             WikiSpaceGroup.WIKI_SPACE_GROUP,
             WikiTemplate.WIKI_TEMPLATE,

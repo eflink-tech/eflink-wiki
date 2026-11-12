@@ -81,6 +81,24 @@ public class WikiComment extends TableImpl<WikiCommentRecord> {
     public final TableField<WikiCommentRecord, String> CONTENT = createField(DSL.name("content"), SQLDataType.CLOB.nullable(false), this, "评论内容");
 
     /**
+     * The column <code>eflink-wiki.wiki_comment.anchor_text</code>.
+     * é”šå®šå¼•ç”¨çš„æ­£æ–‡ç‰‡æ®µ
+     */
+    public final TableField<WikiCommentRecord, String> ANCHOR_TEXT = createField(DSL.name("anchor_text"), SQLDataType.VARCHAR(300), this, "é”šå®šå¼•ç”¨çš„æ­£æ–‡ç‰‡æ®µ");
+
+    /**
+     * The column <code>eflink-wiki.wiki_comment.anchor_from</code>.
+     * é”šå®šèµ·ç‚¹ï¼ˆProseMirror æ–‡æ¡£ä½ç½®ï¼‰
+     */
+    public final TableField<WikiCommentRecord, Integer> ANCHOR_FROM = createField(DSL.name("anchor_from"), SQLDataType.INTEGER, this, "é”šå®šèµ·ç‚¹ï¼ˆProseMirror æ–‡æ¡£ä½ç½®ï¼‰");
+
+    /**
+     * The column <code>eflink-wiki.wiki_comment.anchor_to</code>.
+     * é”šå®šç»ˆç‚¹ï¼ˆProseMirror æ–‡æ¡£ä½ç½®ï¼‰
+     */
+    public final TableField<WikiCommentRecord, Integer> ANCHOR_TO = createField(DSL.name("anchor_to"), SQLDataType.INTEGER, this, "é”šå®šç»ˆç‚¹ï¼ˆProseMirror æ–‡æ¡£ä½ç½®ï¼‰");
+
+    /**
      * The column <code>eflink-wiki.wiki_comment.is_del</code>. 软删：0 否 1 是
      */
     public final TableField<WikiCommentRecord, Integer> IS_DEL = createField(DSL.name("is_del"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.inline("0", SQLDataType.INTEGER)), this, "软删：0 否 1 是");

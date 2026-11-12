@@ -24,6 +24,7 @@ import tech.eflink.wiki.database.tables.WikiFavorite;
 import tech.eflink.wiki.database.tables.WikiMember;
 import tech.eflink.wiki.database.tables.WikiNode;
 import tech.eflink.wiki.database.tables.WikiRecentOpen;
+import tech.eflink.wiki.database.tables.WikiShareLink;
 import tech.eflink.wiki.database.tables.WikiSpace;
 import tech.eflink.wiki.database.tables.WikiSpaceGroup;
 import tech.eflink.wiki.database.tables.WikiTemplate;
@@ -135,6 +136,11 @@ public class Tables {
      * 最近打开页面
      */
     public static final WikiRecentOpen WIKI_RECENT_OPEN = WikiRecentOpen.WIKI_RECENT_OPEN;
+
+    /**
+     * 页面分享链接
+     */
+    public static final WikiShareLink WIKI_SHARE_LINK = WikiShareLink.WIKI_SHARE_LINK;
 
     /**
      * 知识库空间

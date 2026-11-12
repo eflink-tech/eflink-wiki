@@ -130,6 +130,8 @@ wiki:
       - /api/auth/login
       - /api/auth/refresh
       - /api/auth/logout
+      # 页面分享链接：按令牌范围自行校验（公开 / 登录可读 / 仅空间成员）
+      - /api/public/share/**
       # eflink 主站关联登录：发起跳转 / 票据登录 / 冲突授权绑定
       - /api/auth/connector/start
       - /api/auth/connector/login

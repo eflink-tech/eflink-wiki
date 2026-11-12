@@ -91,31 +91,79 @@ public class WikiCommentRecord extends UpdatableRecordImpl<WikiCommentRecord> {
     }
 
     /**
+     * Setter for <code>eflink-wiki.wiki_comment.anchor_text</code>.
+     * é”šå®šå¼•ç”¨çš„æ­£æ–‡ç‰‡æ®µ
+     */
+    public void setAnchorText(String value) {
+        set(5, value);
+    }
+
+    /**
+     * Getter for <code>eflink-wiki.wiki_comment.anchor_text</code>.
+     * é”šå®šå¼•ç”¨çš„æ­£æ–‡ç‰‡æ®µ
+     */
+    public String getAnchorText() {
+        return (String) get(5);
+    }
+
+    /**
+     * Setter for <code>eflink-wiki.wiki_comment.anchor_from</code>.
+     * é”šå®šèµ·ç‚¹ï¼ˆProseMirror æ–‡æ¡£ä½ç½®ï¼‰
+     */
+    public void setAnchorFrom(Integer value) {
+        set(6, value);
+    }
+
+    /**
+     * Getter for <code>eflink-wiki.wiki_comment.anchor_from</code>.
+     * é”šå®šèµ·ç‚¹ï¼ˆProseMirror æ–‡æ¡£ä½ç½®ï¼‰
+     */
+    public Integer getAnchorFrom() {
+        return (Integer) get(6);
+    }
+
+    /**
+     * Setter for <code>eflink-wiki.wiki_comment.anchor_to</code>.
+     * é”šå®šç»ˆç‚¹ï¼ˆProseMirror æ–‡æ¡£ä½ç½®ï¼‰
+     */
+    public void setAnchorTo(Integer value) {
+        set(7, value);
+    }
+
+    /**
+     * Getter for <code>eflink-wiki.wiki_comment.anchor_to</code>.
+     * é”šå®šç»ˆç‚¹ï¼ˆProseMirror æ–‡æ¡£ä½ç½®ï¼‰
+     */
+    public Integer getAnchorTo() {
+        return (Integer) get(7);
+    }
+
+    /**
      * Setter for <code>eflink-wiki.wiki_comment.is_del</code>. 软删：0 否 1 是
      */
     public void setIsDel(Integer value) {
-        set(5, value);
+        set(8, value);
     }
 
     /**
      * Getter for <code>eflink-wiki.wiki_comment.is_del</code>. 软删：0 否 1 是
      */
     public Integer getIsDel() {
-        return (Integer) get(5);
+        return (Integer) get(8);
     }
 
     /**
      * Setter for <code>eflink-wiki.wiki_comment.created_at</code>. 创建时间
      */
     public void setCreatedAt(LocalDateTime value) {
-        set(6, value);
+        set(9, value);
     }
 
     /**
      * Getter for <code>eflink-wiki.wiki_comment.created_at</code>. 创建时间
      */
     public LocalDateTime getCreatedAt() {
-        return (LocalDateTime) get(6);
+        return (LocalDateTime) get(9);
     }
 
     // -------------------------------------------------------------------------
@@ -141,7 +189,7 @@ public class WikiCommentRecord extends UpdatableRecordImpl<WikiCommentRecord> {
     /**
      * Create a detached, initialised WikiCommentRecord
      */
-    public WikiCommentRecord(Long id, Long nodeId, Long userId, Long parentId, String content, Integer isDel, LocalDateTime createdAt) {
+    public WikiCommentRecord(Long id, Long nodeId, Long userId, Long parentId, String content, String anchorText, Integer anchorFrom, Integer anchorTo, Integer isDel, LocalDateTime createdAt) {
         super(WikiComment.WIKI_COMMENT);
 
         setId(id);
@@ -149,6 +197,9 @@ public class WikiCommentRecord extends UpdatableRecordImpl<WikiCommentRecord> {
         setUserId(userId);
         setParentId(parentId);
         setContent(content);
+        setAnchorText(anchorText);
+        setAnchorFrom(anchorFrom);
+        setAnchorTo(anchorTo);
         setIsDel(isDel);
         setCreatedAt(createdAt);
         resetChangedOnNotNull();
@@ -166,6 +217,9 @@ public class WikiCommentRecord extends UpdatableRecordImpl<WikiCommentRecord> {
             setUserId(value.getUserId());
             setParentId(value.getParentId());
             setContent(value.getContent());
+            setAnchorText(value.getAnchorText());
+            setAnchorFrom(value.getAnchorFrom());
+            setAnchorTo(value.getAnchorTo());
             setIsDel(value.getIsDel());
             setCreatedAt(value.getCreatedAt());
             resetChangedOnNotNull();

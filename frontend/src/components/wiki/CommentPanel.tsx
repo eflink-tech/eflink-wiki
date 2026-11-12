@@ -52,10 +52,14 @@ interface CommentPanelProps {
   nodeId: number
   /** 所属空间 ID（传入后启用评论 @提及：仅空间内成员） */
   spaceId?: number
+  /** 点击锚定引用时跳转到正文选区 */
+  onJumpAnchor?: (comment: CommentItem) => void
+  /** 外部发表锚定评论后递增，触发列表刷新 */
+  refreshKey?: number
 }
 
 /** 评论面板（默认导出）：进入自动拉取评论列表 */
-export default function CommentPanel({ nodeId, spaceId }: CommentPanelProps) {
+export default function CommentPanel({ nodeId, spaceId, onJumpAnchor, refreshKey = 0 }: CommentPanelProps) {
   const me = useAuthStore((s) => s.user)
   const [items, setItems] = useState<CommentItem[] | null>(null)
   const [content, setContent] = useState('')
@@ -101,7 +105,7 @@ export default function CommentPanel({ nodeId, spaceId }: CommentPanelProps) {
 
   useEffect(() => {
     void load()
-  }, [load])
+  }, [load, refreshKey])
 
   /** 发表评论（有 replyTo 时作为楼中楼回复） */
   const submit = async () => {
@@ -198,6 +202,16 @@ export default function CommentPanel({ nodeId, spaceId }: CommentPanelProps) {
             <span className="text-meta font-medium text-ink-1">{c.displayName}</span>
             <span className="text-xs text-ink-3">{fmtTs(c.createdAt)}</span>
           </div>
+          {c.anchorText && (
+            <button
+              type="button"
+              title="定位到正文引用位置"
+              className="mt-1 block max-w-full truncate rounded-sm border-l-2 border-brand/60 bg-surface/70 px-2 py-1 text-left text-xs text-ink-3 transition-colors hover:text-brand"
+              onClick={() => onJumpAnchor?.(c)}
+            >
+              「{c.anchorText}」
+            </button>
+          )}
           <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-ink-2">
             {renderContent(c.content)}
           </p>

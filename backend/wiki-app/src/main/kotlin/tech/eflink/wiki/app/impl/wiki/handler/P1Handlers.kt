@@ -67,6 +67,9 @@ class ListCommentsCommandHandler(
                 displayName = row["displayName"] as String
                 avatar = row["avatar"] as String?
                 createdAt = DtoMappers.epoch(row["createdAt"] as? java.time.LocalDateTime)
+                anchorText = row["anchorText"] as String?
+                anchorFrom = row["anchorFrom"] as Int?
+                anchorTo = row["anchorTo"] as Int?
             }
         }.toMutableList()
     }
@@ -93,11 +96,20 @@ class AddCommentCommandHandler(
             commentRepository.findById(command.request.parentId)
                 ?: throw ValidateException(406, "回复的评论不存在")
         } else null
+        // 锚定只对一级评论生效：回复跟随所在楼层，不单独记录选区
+        val anchorText = if (parent == null) {
+            command.request.anchorText?.trim()?.take(300)?.ifBlank { null }
+        } else null
+        val anchorFrom = if (anchorText != null) command.request.anchorFrom?.coerceAtLeast(0) else null
+        val anchorTo = if (anchorFrom != null) command.request.anchorTo?.coerceAtLeast(anchorFrom) else null
         val id = commentRepository.create(
             nodeId = node.id,
             userId = access.userId,
             parentId = command.request.parentId,
-            content = command.request.content.trim().take(2000)
+            content = command.request.content.trim().take(2000),
+            anchorText = anchorText,
+            anchorFrom = anchorFrom,
+            anchorTo = anchorTo,
         )
         // 通知触发：@提及（仅空间内成员，后端按空间角色校验）+ 页面作者 + 被回复人，各自去重且不打扰动作本人
         val space = spaceRepository.findById(node.spaceId)
@@ -135,6 +147,9 @@ class AddCommentCommandHandler(
             username = AuthContext.currentUsername()
             displayName = AuthContext.currentUsername()
             createdAt = System.currentTimeMillis()
+            this.anchorText = anchorText
+            this.anchorFrom = anchorFrom
+            this.anchorTo = anchorTo
         }
     }
 }

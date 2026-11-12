@@ -583,3 +583,22 @@
   padding: 0 3px;
   font-weight: 500;
 }
+
+/* ===== 查找替换命中高亮 ===== */
+.wiki-find-match {
+  background: #fde68a;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25);
+}
+.wiki-find-current {
+  background: #f59e0b;
+  color: #111827;
+  box-shadow: 0 0 0 1px #b45309;
+}
+
+/* ===== 评论锚定：跳转后短暂高亮 ===== */
+.wiki-comment-anchor-flash {
+  background: rgba(96, 165, 250, 0.28);
+  border-bottom: 2px solid rgba(37, 99, 235, 0.6);
+  transition: background-color 0.4s ease;
+}

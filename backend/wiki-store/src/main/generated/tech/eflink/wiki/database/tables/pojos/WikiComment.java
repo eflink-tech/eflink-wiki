@@ -21,6 +21,9 @@ public class WikiComment implements Serializable {
     private Long userId;
     private Long parentId;
     private String content;
+    private String anchorText;
+    private Integer anchorFrom;
+    private Integer anchorTo;
     private Integer isDel;
     private LocalDateTime createdAt;
 
@@ -32,6 +35,9 @@ public class WikiComment implements Serializable {
         this.userId = value.userId;
         this.parentId = value.parentId;
         this.content = value.content;
+        this.anchorText = value.anchorText;
+        this.anchorFrom = value.anchorFrom;
+        this.anchorTo = value.anchorTo;
         this.isDel = value.isDel;
         this.createdAt = value.createdAt;
     }
@@ -42,6 +48,9 @@ public class WikiComment implements Serializable {
         Long userId,
         Long parentId,
         String content,
+        String anchorText,
+        Integer anchorFrom,
+        Integer anchorTo,
         Integer isDel,
         LocalDateTime createdAt
     ) {
@@ -50,6 +59,9 @@ public class WikiComment implements Serializable {
         this.userId = userId;
         this.parentId = parentId;
         this.content = content;
+        this.anchorText = anchorText;
+        this.anchorFrom = anchorFrom;
+        this.anchorTo = anchorTo;
         this.isDel = isDel;
         this.createdAt = createdAt;
     }
@@ -125,6 +137,54 @@ public class WikiComment implements Serializable {
     }
 
     /**
+     * Getter for <code>eflink-wiki.wiki_comment.anchor_text</code>.
+     * é”šå®šå¼•ç”¨çš„æ­£æ–‡ç‰‡æ®µ
+     */
+    public String getAnchorText() {
+        return this.anchorText;
+    }
+
+    /**
+     * Setter for <code>eflink-wiki.wiki_comment.anchor_text</code>.
+     * é”šå®šå¼•ç”¨çš„æ­£æ–‡ç‰‡æ®µ
+     */
+    public void setAnchorText(String anchorText) {
+        this.anchorText = anchorText;
+    }
+
+    /**
+     * Getter for <code>eflink-wiki.wiki_comment.anchor_from</code>.
+     * é”šå®šèµ·ç‚¹ï¼ˆProseMirror æ–‡æ¡£ä½ç½®ï¼‰
+     */
+    public Integer getAnchorFrom() {
+        return this.anchorFrom;
+    }
+
+    /**
+     * Setter for <code>eflink-wiki.wiki_comment.anchor_from</code>.
+     * é”šå®šèµ·ç‚¹ï¼ˆProseMirror æ–‡æ¡£ä½ç½®ï¼‰
+     */
+    public void setAnchorFrom(Integer anchorFrom) {
+        this.anchorFrom = anchorFrom;
+    }
+
+    /**
+     * Getter for <code>eflink-wiki.wiki_comment.anchor_to</code>.
+     * é”šå®šç»ˆç‚¹ï¼ˆProseMirror æ–‡æ¡£ä½ç½®ï¼‰
+     */
+    public Integer getAnchorTo() {
+        return this.anchorTo;
+    }
+
+    /**
+     * Setter for <code>eflink-wiki.wiki_comment.anchor_to</code>.
+     * é”šå®šç»ˆç‚¹ï¼ˆProseMirror æ–‡æ¡£ä½ç½®ï¼‰
+     */
+    public void setAnchorTo(Integer anchorTo) {
+        this.anchorTo = anchorTo;
+    }
+
+    /**
      * Getter for <code>eflink-wiki.wiki_comment.is_del</code>. 软删：0 否 1 是
      */
     public Integer getIsDel() {
@@ -191,6 +251,24 @@ public class WikiComment implements Serializable {
         }
         else if (!this.content.equals(other.content))
             return false;
+        if (this.anchorText == null) {
+            if (other.anchorText != null)
+                return false;
+        }
+        else if (!this.anchorText.equals(other.anchorText))
+            return false;
+        if (this.anchorFrom == null) {
+            if (other.anchorFrom != null)
+                return false;
+        }
+        else if (!this.anchorFrom.equals(other.anchorFrom))
+            return false;
+        if (this.anchorTo == null) {
+            if (other.anchorTo != null)
+                return false;
+        }
+        else if (!this.anchorTo.equals(other.anchorTo))
+            return false;
         if (this.isDel == null) {
             if (other.isDel != null)
                 return false;
@@ -215,6 +293,9 @@ public class WikiComment implements Serializable {
         result = prime * result + ((this.userId == null) ? 0 : this.userId.hashCode());
         result = prime * result + ((this.parentId == null) ? 0 : this.parentId.hashCode());
         result = prime * result + ((this.content == null) ? 0 : this.content.hashCode());
+        result = prime * result + ((this.anchorText == null) ? 0 : this.anchorText.hashCode());
+        result = prime * result + ((this.anchorFrom == null) ? 0 : this.anchorFrom.hashCode());
+        result = prime * result + ((this.anchorTo == null) ? 0 : this.anchorTo.hashCode());
         result = prime * result + ((this.isDel == null) ? 0 : this.isDel.hashCode());
         result = prime * result + ((this.createdAt == null) ? 0 : this.createdAt.hashCode());
         return result;
@@ -229,6 +310,9 @@ public class WikiComment implements Serializable {
         sb.append(", ").append(userId);
         sb.append(", ").append(parentId);
         sb.append(", ").append(content);
+        sb.append(", ").append(anchorText);
+        sb.append(", ").append(anchorFrom);
+        sb.append(", ").append(anchorTo);
         sb.append(", ").append(isDel);
         sb.append(", ").append(createdAt);
 

@@ -22,13 +22,26 @@ class CommentResult : DataTransferObjectBase() {
     var displayName: String = ""
     var avatar: String? = null
     var createdAt: Long? = null
+    /** 锚定引用的正文片段（仅一级评论可能非空） */
+    var anchorText: String? = null
+    /** 锚定起止（ProseMirror 文档位置；内容编辑后可能漂移） */
+    var anchorFrom: Int? = null
+    var anchorTo: Int? = null
 }
 
 class CommentListResult : DataTransferObjectBase() {
     var list: MutableList<CommentResult> = mutableListOf()
 }
 
-data class AddCommentRequest(val content: String = "", val parentId: Long = 0, val mentionUserIds: List<Long> = emptyList())
+data class AddCommentRequest(
+    val content: String = "",
+    val parentId: Long = 0,
+    val mentionUserIds: List<Long> = emptyList(),
+    /** 选区锚定：引用文本与 ProseMirror 起止位置（回复时忽略） */
+    val anchorText: String? = null,
+    val anchorFrom: Int? = null,
+    val anchorTo: Int? = null,
+)
 
 class ListCommentsCommand(val nodeId: Long) : CommandObjectBase<CommentListResult>()
 

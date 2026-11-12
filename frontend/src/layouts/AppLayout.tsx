@@ -10,6 +10,7 @@ import {
   KeyRound,
   LayoutTemplate,
   LogOut,
+  Menu,
   Pencil,
   Plus,
   ScrollText,
@@ -22,6 +23,7 @@ import {
   User,
   Users,
   Webhook,
+  X,
 } from 'lucide-react'
 import {
   Fragment,
@@ -572,6 +574,23 @@ export default function AppLayout() {
   const [nodeDelete, setNodeDelete] = useState<TreeNode | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
   const [pwdOpen, setPwdOpen] = useState(false)
+  /** 移动端（<768px）侧栏抽屉开合与视口判定 */
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  // 路由切换后收起移动端侧栏
+  useEffect(() => {
+    setMobileNavOpen(false)
+  }, [location.pathname])
 
   const currentSpace = useMemo(
     () => spaces.find((s) => s.id === spaceId) ?? null,
@@ -857,16 +876,25 @@ export default function AppLayout() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-bg">
       {/* ================= 全局顶栏（52px） ================= */}
-      <header className="flex h-[52px] shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
+      <header className="flex h-[52px] shrink-0 items-center gap-2 border-b border-line bg-surface px-3 md:gap-3 md:px-4">
+        {/* 移动端侧栏开关 */}
+        <button
+          type="button"
+          className="-ml-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-ctrl text-ink-2 transition-colors hover:bg-sunken md:hidden"
+          aria-label={mobileNavOpen ? '关闭侧栏' : '打开侧栏'}
+          onClick={() => setMobileNavOpen((o) => !o)}
+        >
+          {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
+        </button>
         {/* 品牌 */}
         <Link to="/app" className="flex shrink-0 items-center gap-2">
           <img src={logoUrl} alt="易飞知识库 Logo" className="h-7 w-7" draggable={false} />
-          <span className="text-[15px] font-semibold text-ink-1">易飞知识库</span>
+          <span className="hidden text-[15px] font-semibold text-ink-1 sm:inline">易飞知识库</span>
         </Link>
-        <span className="h-4 w-px shrink-0 bg-line" aria-hidden />
+        <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden />
 
-        {/* 面包屑（空间 / 页面） */}
-        <nav className="flex min-w-0 shrink items-center gap-1 text-meta text-ink-3">
+        {/* 面包屑（空间 / 页面）：窄屏隐藏，主区已有标题 */}
+        <nav className="hidden min-w-0 shrink items-center gap-1 text-meta text-ink-3 md:flex">
           {currentSpace ? (
             <>
               <Link
@@ -902,8 +930,8 @@ export default function AppLayout() {
           )}
         </nav>
 
-        {/* 全局搜索（原侧栏搜索上移；⌘K 聚焦） */}
-        <div className="relative mx-auto w-full min-w-[200px] max-w-[420px]">
+        {/* 全局搜索（原侧栏搜索上移；⌘K 聚焦）：小屏收起，避免挤压操作区 */}
+        <div className="relative mx-auto hidden w-full min-w-[200px] max-w-[420px] sm:block">
           <Input
             id="wiki-global-search"
             prefix={<Search size={14} />}
@@ -965,7 +993,7 @@ export default function AppLayout() {
           className="shrink-0"
           onClick={handleGlobalCreate}
         >
-          <Plus size={14} /> 新建
+          <Plus size={14} /> <span className="hidden sm:inline">新建</span>
         </Button>
 
         {/* 用户下拉 */}
@@ -978,7 +1006,7 @@ export default function AppLayout() {
               className="flex shrink-0 items-center gap-2 rounded-ctrl px-1.5 py-1 transition-colors hover:bg-sunken"
             >
               <Avatar name={user?.displayName ?? '?'} src={user?.avatar} size={28} />
-              <span className="max-w-[96px] truncate text-sm text-ink-2">
+              <span className="hidden max-w-[96px] truncate text-sm text-ink-2 md:inline">
                 {user?.displayName ?? '未登录'}
               </span>
             </button>
@@ -1047,8 +1075,24 @@ export default function AppLayout() {
         ref={containerRef}
         className={cn('flex min-h-0 flex-1', dragging && 'cursor-col-resize select-none')}
       >
-        {/* ================= 侧栏（可拖拽调宽，默认 264px） ================= */}
-        <aside style={leftStyle} className="flex shrink-0 flex-col border-r border-line bg-surface">
+        {/* 移动端抽屉遮罩 */}
+        {mobileNavOpen && (
+          <button
+            type="button"
+            aria-label="关闭侧栏"
+            className="fixed inset-x-0 bottom-0 top-[52px] z-30 bg-black/30 md:hidden"
+            onClick={() => setMobileNavOpen(false)}
+          />
+        )}
+
+        {/* ================= 侧栏（可拖拽调宽，默认 264px；移动端为抽屉） ================= */}
+        <aside
+          style={isMobile ? undefined : leftStyle}
+          className={cn(
+            'flex shrink-0 flex-col border-r border-line bg-surface max-md:fixed max-md:bottom-0 max-md:left-0 max-md:top-[52px] max-md:z-40 max-md:w-[280px] max-md:transition-transform max-md:duration-200',
+            mobileNavOpen ? 'max-md:translate-x-0' : 'max-md:-translate-x-full',
+          )}
+        >
           {/* 空间卡：头像 + 名称 + 角色 chip + 成员数；点击切换空间 */}
           <div className="p-3 pb-1.5">
             <Dropdown
@@ -1214,7 +1258,7 @@ export default function AppLayout() {
         </aside>
 
         {/* 拖拽手柄：调整侧栏与内容区宽度，双击重置 */}
-        <SplitHandle dragging={dragging} {...handleProps} />
+        <SplitHandle className="max-md:hidden" dragging={dragging} {...handleProps} />
 
         {/* ================= 主区内容（列表页灰底、页面自绘卡片；阅读/编辑页自绘白画布） ================= */}
         <main className="min-w-0 flex-1 overflow-y-auto">

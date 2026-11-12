@@ -45,6 +45,7 @@
     "@tiptap/suggestion": "^2.27.3",
     "axios": "^1.19.0",
     "diff-match-patch": "^1.0.5",
+    "docx": "^9.7.1",
     "docx-preview": "^0.4.0",
     "highlight.js": "^11.12.0",
     "html2canvas-pro": "^2.4.3",
@@ -52,6 +53,7 @@
     "lib0": "^0.2.117",
     "lowlight": "^3.3.0",
     "lucide-react": "^1.34.0",
+    "mammoth": "^1.13.0",
     "pptx-preview": "^1.0.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -76,6 +78,9 @@
     "vitest": "^5.0.0"
   },
   "pnpm": {
+    "overrides": {
+      "@eflink-tech/office-kit": "file:../../eflink-word/packages/office-kit"
+    },
     "onlyBuiltDependencies": [
       "@eflink-tech/excel",
       "esbuild"
